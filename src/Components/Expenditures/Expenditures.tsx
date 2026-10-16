@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Receipt, CircleNotch } from '@phosphor-icons/react'
+import { Receipt, CircleNotch, CaretDown, CaretRight } from '@phosphor-icons/react'
 import { useQuery } from '@tanstack/react-query'
 import { expenditureService, type ExpenditureView, type ExpenditureDistributionView } from '../../api/services/expenditureService'
 import { normalizeList } from '../../utils/normalizeList'
@@ -221,78 +221,93 @@ const fmtDate = (iso: string) => {
   catch { return iso }
 }
 
-const AieTable = ({ rows }: { rows: Record<string, unknown>[] }) => (
-  <div>
-    {rows.map((record) => {
-      const aie = record as unknown as AieRecordShape
-      const items: AieLineItemShape[] = Array.isArray(aie.lineItems) ? aie.lineItems : []
-      const statusColor =
-        aie.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
-        aie.status === 'PENDING'  ? 'bg-amber-100 text-amber-700' :
-        'bg-slate-100 text-slate-500'
+const AieTable = ({ rows }: { rows: Record<string, unknown>[] }) => {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const toggle = (id: string) =>
+    setCollapsed((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
 
-      return (
-        <div key={aie.id} className="border-b border-slate-100">
-          <div className="px-5 py-3 flex items-center gap-4 flex-wrap" style={{ background: '#0d2137' }}>
-            <span className="text-sm font-bold text-white">{aie.aieNo}</span>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>{aie.status}</span>
-            <span className="text-xs text-slate-400 flex-1 text-right">
-              {fmtDate(aie.issueDate)} – {fmtDate(aie.expiresOn)}
-            </span>
-            <span className="text-xs font-semibold text-white whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-              Total: {fmtCurrency(aie.totalAmount)}
-            </span>
-          </div>
+  return (
+    <div>
+      {rows.map((record) => {
+        const aie = record as unknown as AieRecordShape
+        const items: AieLineItemShape[] = Array.isArray(aie.lineItems) ? aie.lineItems : []
+        const isOpen = !collapsed.has(aie.id)
+        const statusColor =
+          aie.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
+          aie.status === 'PENDING'  ? 'bg-amber-100 text-amber-700' :
+          'bg-slate-100 text-slate-500'
 
-          {items.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full" style={{ fontSize: 12 }}>
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="text-left px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Code</th>
-                    <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Sub-Item Code</th>
-                    <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide" style={{ fontSize: 10.5 }}>Description</th>
-                    <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Budget (₦)</th>
-                    <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Actual (₦)</th>
-                    <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Variance (₦)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item, ii) => {
-                    const actual = item.fulfillingProposal?.amount ?? null
-                    const variance = actual != null ? actual - item.budgetAmount : null
-                    return (
-                      <tr
-                        key={item.id ?? ii}
-                        className={`border-t border-slate-50 hover:bg-blue-50 transition-colors ${ii % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
-                      >
-                        <td className="px-5 py-1.5 font-mono text-slate-500 whitespace-nowrap">{item.itemCodeId}</td>
-                        <td className="px-3 py-1.5 font-mono text-slate-500 whitespace-nowrap">{item.subItemCodeId}</td>
-                        <td className="px-3 py-1.5 text-slate-700">{item.subItemLabel}</td>
-                        <td className="px-5 py-1.5 text-right text-slate-800 font-medium whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                          {fmtCurrency(item.budgetAmount)}
-                        </td>
-                        <td className="px-5 py-1.5 text-right text-slate-700 font-medium whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                          {actual != null ? fmtCurrency(actual) : '—'}
-                        </td>
-                        <td
-                          className="px-5 py-1.5 text-right font-semibold whitespace-nowrap"
-                          style={{ fontVariantNumeric: 'tabular-nums', color: variance == null ? '#94a3b8' : variance >= 0 ? '#16a34a' : '#dc2626' }}
+        return (
+          <div key={aie.id} className="border-b border-slate-100">
+            <button
+              onClick={() => toggle(aie.id)}
+              className="w-full px-5 py-3 flex items-center gap-3 text-left hover:brightness-110 transition-all"
+              style={{ background: '#0d2137' }}
+            >
+              {isOpen
+                ? <CaretDown size={14} className="text-slate-400 shrink-0" />
+                : <CaretRight size={14} className="text-slate-400 shrink-0" />
+              }
+              <span className="text-sm font-bold text-white">{aie.aieNo}</span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>{aie.status}</span>
+              <span className="text-xs text-slate-400 flex-1 text-right">
+                {fmtDate(aie.issueDate)} – {fmtDate(aie.expiresOn)}
+              </span>
+              <span className="text-xs font-semibold text-white whitespace-nowrap ml-4" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {items.length} items · {fmtCurrency(aie.totalAmount)}
+              </span>
+            </button>
+
+            {isOpen && items.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full" style={{ fontSize: 12 }}>
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                      <th className="text-left px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Code</th>
+                      <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Sub-Item Code</th>
+                      <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide" style={{ fontSize: 10.5 }}>Description</th>
+                      <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Budget (₦)</th>
+                      <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Actual (₦)</th>
+                      <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Variance (₦)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, ii) => {
+                      const actual = item.fulfillingProposal?.amount ?? null
+                      const variance = actual != null ? actual - item.budgetAmount : null
+                      return (
+                        <tr
+                          key={item.id ?? ii}
+                          className={`border-t border-slate-50 hover:bg-blue-50 transition-colors ${ii % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
                         >
-                          {variance != null ? `${variance >= 0 ? '+' : ''}${fmtCurrency(variance)}` : '—'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )
-    })}
-  </div>
-)
+                          <td className="px-5 py-1.5 font-mono text-slate-500 whitespace-nowrap">{item.itemCodeId}</td>
+                          <td className="px-3 py-1.5 font-mono text-slate-500 whitespace-nowrap">{item.subItemCodeId}</td>
+                          <td className="px-3 py-1.5 text-slate-700">{item.subItemLabel}</td>
+                          <td className="px-5 py-1.5 text-right text-slate-800 font-medium whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                            {fmtCurrency(item.budgetAmount)}
+                          </td>
+                          <td className="px-5 py-1.5 text-right text-slate-700 font-medium whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                            {actual != null ? fmtCurrency(actual) : '—'}
+                          </td>
+                          <td
+                            className="px-5 py-1.5 text-right font-semibold whitespace-nowrap"
+                            style={{ fontVariantNumeric: 'tabular-nums', color: variance == null ? '#94a3b8' : variance >= 0 ? '#16a34a' : '#dc2626' }}
+                          >
+                            {variance != null ? `${variance >= 0 ? '+' : ''}${fmtCurrency(variance)}` : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 // ── Flat table for sub-item view ──────────────────────────────────────────────
 const isAmtKey = (key: string) => /amount|budget|actual|total|gross|wht/i.test(key)
