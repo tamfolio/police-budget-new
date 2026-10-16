@@ -4,7 +4,11 @@ import { useCreateFundInflow, useUpdateFundInflow } from '../../hooks/useFundInf
 import type { FundInflow } from '../../types'
 
 const YEAR = new Date().getFullYear()
-const SOURCES = ['Federal Government Grant', 'State Government Subvention', 'IGR', 'Donor Funding', 'Other']
+const SOURCES = [
+  { value: 'FAAC_ALLOCATION', label: 'FAAC Allocation' },
+  { value: 'SPECIAL_INTERVENTION_FUND', label: 'Special Intervention Fund' },
+  { value: 'OTHERS', label: 'Others' },
+]
 
 interface Props {
   open: boolean
@@ -100,7 +104,7 @@ const FundInflowForm = ({ open, onClose, existing }: Props) => {
           <label className={labelCls}>Source *</label>
           <select required value={form.source} onChange={(e) => set('source', e.target.value)} className={inputCls}>
             <option value="">Select source…</option>
-            {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+            {SOURCES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>
 

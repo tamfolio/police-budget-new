@@ -2,21 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { fundInflowService } from '../api/services/fundInflowService'
 import { getErrorMessage } from '../utils/errorHandlers'
-import type { GetFundInflowsParams, CreateFundInflowPayload, UpdateFundInflowPayload, RejectPayload } from '../types'
+import { normalizeList } from '../utils/normalizeList'
+import type { GetFundInflowsParams, CreateFundInflowPayload, UpdateFundInflowPayload, RejectPayload, FundInflow } from '../types'
 
 const QK = 'fund-inflows'
 
-// API returns the array directly: GET /fund-inflows → [...]
 export const useFundInflows = (params?: GetFundInflowsParams) =>
   useQuery({
     queryKey: [QK, params],
     queryFn: () => fundInflowService.getAll(params),
-    select: (res) => {
-      const d = res.data
-      if (Array.isArray(d)) return d as import('../types').FundInflow[]
-      if (Array.isArray(d?.data)) return d.data as import('../types').FundInflow[]
-      return (d?.data?.fundInflows ?? []) as import('../types').FundInflow[]
-    },
+    select: (res) => normalizeList<FundInflow>(res.data),
   })
 
 export const useFundInflow = (id: string) =>

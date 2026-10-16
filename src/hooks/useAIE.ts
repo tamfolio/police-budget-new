@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { aieService, type GetAIEsParams, type CreateAIEPayload } from '../api/services/aieService'
 import { getErrorMessage } from '../utils/errorHandlers'
-import type { RejectPayload } from '../types'
+import { normalizeList } from '../utils/normalizeList'
+import type { RejectPayload, AIE } from '../types'
 
 const QK = 'aies'
 
@@ -10,13 +11,7 @@ export const useAIEs = (params?: GetAIEsParams) =>
   useQuery({
     queryKey: [QK, params],
     queryFn: () => aieService.getAll(params),
-    select: (res) => {
-      const d = res.data
-      if (Array.isArray(d)) return d as import('../types').AIE[]
-      if (Array.isArray(d?.items)) return d.items as import('../types').AIE[]
-      if (Array.isArray(d?.data)) return d.data as import('../types').AIE[]
-      return [] as import('../types').AIE[]
-    },
+    select: (res) => normalizeList<AIE>(res.data),
   })
 
 export const useAIE = (id: string) =>

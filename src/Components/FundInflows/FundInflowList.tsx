@@ -11,6 +11,12 @@ import type { FundInflow, FundInflowStatus } from '../../types'
 
 const YEAR = new Date().getFullYear()
 
+const SOURCE_LABELS: Record<string, string> = {
+  FAAC_ALLOCATION: 'FAAC Allocation',
+  SPECIAL_INTERVENTION_FUND: 'Special Intervention Fund',
+  OTHERS: 'Others',
+}
+
 const fmt = (v: number) => `₦${v.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const FundInflowList = () => {
@@ -141,7 +147,7 @@ const FundInflowList = () => {
                     <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
                       {new Date(fi.inflowDate).toLocaleDateString('en-GB')}
                     </td>
-                    <td className="px-4 py-3 text-slate-800 font-medium">{fi.source}</td>
+                    <td className="px-4 py-3 text-slate-800 font-medium">{SOURCE_LABELS[fi.source] ?? fi.source}</td>
                     <td className="px-4 py-3 text-slate-500 font-mono text-xs">{fi.referenceNo ?? '—'}</td>
                     <td className="px-4 py-3 text-slate-800 font-semibold whitespace-nowrap">{fmt(fi.amount)}</td>
                     <td className="px-4 py-3 text-slate-600">{fi.fiscalYear}</td>

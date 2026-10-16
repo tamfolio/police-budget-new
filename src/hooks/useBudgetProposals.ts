@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { budgetProposalService, type CreateBudgetProposalPayload, type GetBudgetProposalsParams } from '../api/services/budgetProposalService'
 import { getErrorMessage } from '../utils/errorHandlers'
-import type { RejectPayload } from '../types'
+import { normalizeList } from '../utils/normalizeList'
+import type { RejectPayload, BudgetProposal } from '../types'
 
 const QK = 'budget-proposals'
 
@@ -10,13 +11,7 @@ export const useBudgetProposals = (params?: GetBudgetProposalsParams) =>
   useQuery({
     queryKey: [QK, params],
     queryFn: () => budgetProposalService.getAll(params),
-    select: (res) => {
-      const d = res.data
-      if (Array.isArray(d)) return d
-      if (Array.isArray(d?.items)) return d.items
-      if (Array.isArray(d?.data)) return d.data
-      return []
-    },
+    select: (res) => normalizeList<BudgetProposal>(res.data),
   })
 
 export const useBudgetProposal = (id: string) =>

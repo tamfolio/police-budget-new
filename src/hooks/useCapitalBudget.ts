@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { capitalBudgetService } from '../api/services/capitalBudgetService'
 import { getErrorMessage } from '../utils/errorHandlers'
-import type { CreateCapitalBudgetItemPayload, GetCapitalBudgetItemsParams } from '../types'
+import { normalizePagedList } from '../utils/normalizeList'
+import type { CreateCapitalBudgetItemPayload, GetCapitalBudgetItemsParams, CapitalBudgetItem } from '../types'
 
 const QK = 'capital-budget'
 
@@ -13,13 +14,7 @@ export const useCapitalBudgetItems = (params?: GetCapitalBudgetItemsParams) =>
   useQuery({
     queryKey: [QK, params],
     queryFn: () => capitalBudgetService.getAll(params),
-    select: (res) => {
-      const d = res.data
-      if (Array.isArray(d)) return { items: d as import('../types').CapitalBudgetItem[], total: d.length }
-      if (Array.isArray(d?.data)) return { items: d.data as import('../types').CapitalBudgetItem[], total: d.meta?.total ?? d.data.length }
-      if (Array.isArray(d?.items)) return { items: d.items as import('../types').CapitalBudgetItem[], total: d.total ?? d.items.length }
-      return { items: [] as import('../types').CapitalBudgetItem[], total: 0 }
-    },
+    select: (res) => normalizePagedList<CapitalBudgetItem>(res.data),
   })
 
 export const useCreateCapitalBudgetItem = () => {

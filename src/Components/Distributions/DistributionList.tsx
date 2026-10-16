@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { MapTrifold, CircleNotch, CaretDown, Plus, PencilSimple, Trash } from '@phosphor-icons/react'
-import { useDistributions, useCreateDistribution, useUpdateDistribution, useDeleteDistribution } from '../../hooks/useDistributions'
+import { useDistributions, useUpdateDistribution, useDeleteDistribution } from '../../hooks/useDistributions'
+import AddDistributionPeriodModal from './AddDistributionPeriodModal'
 import { PageHeader } from '../Common/PageHeader'
 import { EmptyState } from '../Common/EmptyState'
 import { Modal } from '../Common/Modal'
@@ -379,13 +380,12 @@ const DistributionList = () => {
   const [groupsOpen, setGroupsOpen] = useState<Record<string, boolean>>({})
 
   // period CRUD state
-  const [addOpen, setAddOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [addOpen,     setAddOpen]     = useState(false)
+  const [editOpen,    setEditOpen]    = useState(false)
+  const [deleteId,    setDeleteId]    = useState<string | null>(null)
   const [periodLabel, setPeriodLabel] = useState('')
 
   const { data: rawData, isLoading } = useDistributions({ view })
-  const { mutate: createPeriod, isPending: creating } = useCreateDistribution()
   const { mutate: updatePeriod, isPending: updating } = useUpdateDistribution()
   const { mutate: deletePeriod, isPending: deleting } = useDeleteDistribution()
 
@@ -410,17 +410,10 @@ const DistributionList = () => {
     setGroupsOpen(Object.fromEntries(groupKeys.map((k) => [k, next])))
   }
 
-  const openAdd = () => { setPeriodLabel(''); setAddOpen(true) }
   const openEdit = () => {
     if (!activePeriod) return
     setPeriodLabel(activePeriod.label ?? activePeriod.id)
     setEditOpen(true)
-  }
-  const handleAdd = () => {
-    createPeriod(
-      { view, payload: { label: periodLabel } },
-      { onSuccess: () => setAddOpen(false) }
-    )
   }
   const handleEdit = () => {
     if (!activePeriod) return
@@ -446,7 +439,7 @@ const DistributionList = () => {
         subtitle="Budget distributions across zones and formations"
         actions={
           <button
-            onClick={openAdd}
+            onClick={() => setAddOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-semibold rounded-lg hover:bg-blue-800 transition-colors"
           >
             <Plus size={16} weight="bold" /> Add Period
@@ -482,39 +475,39 @@ const DistributionList = () => {
           />
         ) : (
           <div>
-            {/* Period tabs */}
-            <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', overflowX: 'auto', padding: '0 16px' }}>
-              {periods.map((p) => {
-                const active = activePeriodId === p.id
-                const hasData = periodHasData(p)
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelectedPeriodId(p.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '12px 16px',
-                      fontSize: 13,
-                      fontWeight: active ? 600 : 400,
-                      color: active ? '#0d2137' : '#6b7280',
-                      borderBottom: active ? '2px solid #0d2137' : '2px solid transparent',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      transition: 'color 0.15s',
-                    }}
-                  >
-                    {p.label ?? p.id}
-                    {hasData && (
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0, display: 'inline-block' }} />
-                    )}
-                  </button>
-                )
-              })}
+            {/* Period selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #f1f5f9', padding: '10px 16px' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Period
+              </label>
+              <select
+                value={activePeriodId ?? ''}
+                onChange={(e) => setSelectedPeriodId(e.target.value)}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#0d2137',
+                  background: '#f5f7fa',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  padding: '6px 32px 6px 12px',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 10px center',
+                  minWidth: 200,
+                  outline: 'none',
+                }}
+              >
+                {periods.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {periodHasData(p) ? '● ' : ''}{p.label ?? p.id}
+                  </option>
+                ))}
+              </select>
+              <span style={{ fontSize: 12, color: '#9ca3af' }}>{periods.length} period{periods.length !== 1 ? 's' : ''}</span>
             </div>
 
             {activePeriod && (
@@ -642,38 +635,7 @@ const DistributionList = () => {
         )}
       </div>
 
-      {/* Add Period modal */}
-      <Modal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        title="Add Distribution Period"
-        size="sm"
-        footer={
-          <>
-            <button onClick={() => setAddOpen(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
-              Cancel
-            </button>
-            <button
-              onClick={handleAdd}
-              disabled={creating || !periodLabel.trim()}
-              className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50"
-            >
-              {creating ? 'Creating…' : 'Create Period'}
-            </button>
-          </>
-        }
-      >
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Period Label</label>
-          <input
-            value={periodLabel}
-            onChange={(e) => setPeriodLabel(e.target.value)}
-            placeholder="e.g. Q1 2026"
-            className={inputCls}
-            autoFocus
-          />
-        </div>
-      </Modal>
+      <AddDistributionPeriodModal open={addOpen} onClose={() => setAddOpen(false)} view={view} />
 
       {/* Edit Period modal */}
       <Modal

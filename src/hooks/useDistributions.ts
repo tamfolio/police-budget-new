@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { distributionService, type DistributionView, type GetDistributionsParams } from '../api/services/distributionService'
 import { getErrorMessage } from '../utils/errorHandlers'
+import { normalizeList } from '../utils/normalizeList'
+import type { DistributionPeriod } from '../types'
 
 const QK = 'distributions'
 
@@ -9,7 +11,7 @@ export const useDistributions = (params: GetDistributionsParams) =>
   useQuery({
     queryKey: [QK, params],
     queryFn: () => distributionService.getAll(params),
-    select: (res) => res.data.data,
+    select: (res) => normalizeList<DistributionPeriod>(res.data),
   })
 
 export const useDistributionReference = (view: DistributionView) =>
