@@ -47,27 +47,47 @@ const LineItemsPanel = ({ items }: { items: AIELineItem[] }) => (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: '#f1f5f9' }}>
-              {['Sub-Item Code', 'Description', 'Budget Amount', 'Proposal Amount', 'Status'].map((h) => (
-                <th key={h} style={{ padding: '6px 16px', textAlign: h.includes('Amount') ? 'right' : 'left', fontWeight: 600, fontSize: 10.5, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+              {[
+                { label: 'Code', right: false },
+                { label: 'Sub-Item Code', right: false },
+                { label: 'Description', right: false },
+                { label: 'Budget', right: true },
+                { label: 'Actual', right: true },
+                { label: 'Variance', right: true },
+                { label: 'Status', right: false },
+              ].map(({ label, right }) => (
+                <th key={label} style={{ padding: '6px 16px', textAlign: right ? 'right' : 'left', fontWeight: 600, fontSize: 10.5, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {items.map((item, i) => (
-              <tr key={item.id} style={{ borderTop: '1px solid #e5e7eb', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                <td style={{ padding: '7px 16px', fontFamily: 'monospace', color: '#6b7280', fontSize: 11 }}>{item.subItemCodeId}</td>
-                <td style={{ padding: '7px 16px', color: '#374151' }}>{item.subItemLabel}</td>
-                <td style={{ padding: '7px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1f2937', fontWeight: 500 }}>{fmt(item.budgetAmount)}</td>
-                <td style={{ padding: '7px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1f2937' }}>
-                  {item.fulfillingProposal ? fmt(item.fulfillingProposal.amount) : <span style={{ color: '#d1d5db' }}>—</span>}
-                </td>
-                <td style={{ padding: '7px 16px' }}>
-                  {item.fulfillingProposal
-                    ? <ProposalChip status={item.fulfillingProposal.status} />
-                    : <span style={{ color: '#d1d5db', fontSize: 11 }}>No proposal</span>}
-                </td>
-              </tr>
-            ))}
+            {items.map((item, i) => {
+              const actual = item.fulfillingProposal?.amount ?? null
+              const variance = actual != null ? actual - item.budgetAmount : null
+              return (
+                <tr key={item.id} style={{ borderTop: '1px solid #e5e7eb', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                  <td style={{ padding: '7px 16px', fontFamily: 'monospace', color: '#9ca3af', fontSize: 11 }}>{item.itemCodeId}</td>
+                  <td style={{ padding: '7px 16px', fontFamily: 'monospace', color: '#6b7280', fontSize: 11 }}>{item.subItemCodeId}</td>
+                  <td style={{ padding: '7px 16px', color: '#374151' }}>{item.subItemLabel}</td>
+                  <td style={{ padding: '7px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1f2937', fontWeight: 500 }}>{fmt(item.budgetAmount)}</td>
+                  <td style={{ padding: '7px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1f2937' }}>
+                    {actual != null ? fmt(actual) : <span style={{ color: '#d1d5db' }}>—</span>}
+                  </td>
+                  <td style={{ padding: '7px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    {variance != null ? (
+                      <span style={{ color: variance < 0 ? '#dc2626' : '#16a34a', fontWeight: 500 }}>
+                        {variance >= 0 ? '+' : ''}{fmt(variance)}
+                      </span>
+                    ) : <span style={{ color: '#d1d5db' }}>—</span>}
+                  </td>
+                  <td style={{ padding: '7px 16px' }}>
+                    {item.fulfillingProposal
+                      ? <ProposalChip status={item.fulfillingProposal.status} />
+                      : <span style={{ color: '#d1d5db', fontSize: 11 }}>No proposal</span>}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

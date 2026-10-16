@@ -38,8 +38,8 @@ const periodHasData = (p: DistributionPeriod): boolean => {
 
 const VIEWS: { key: DistributionView; label: string }[] = [
   { key: 'zone', label: 'Zone' },
-  { key: 'formations', label: 'Formation' },
-  { key: 'schools', label: 'School' },
+  { key: 'formations', label: 'Formations' },
+  { key: 'schools', label: 'Schools' },
   { key: 'summary', label: 'Summary' },
 ]
 

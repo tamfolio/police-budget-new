@@ -6,6 +6,20 @@ import { normalizeList } from '../../utils/normalizeList'
 import { PageHeader } from '../Common/PageHeader'
 import { EmptyState } from '../Common/EmptyState'
 
+interface DistributionItem {
+  sno: number | string | null
+  code: string
+  desc: string
+  amounts: number[]
+}
+
+interface DistributionUnit {
+  sno: string | null
+  name: string
+  snos: string[]
+  items: DistributionItem[]
+}
+
 const VIEWS: { key: ExpenditureView; label: string }[] = [
   { key: 'sub-item', label: 'By Sub-item' },
   { key: 'distribution', label: 'By Distribution' },
@@ -14,11 +28,137 @@ const VIEWS: { key: ExpenditureView; label: string }[] = [
 
 const DIST_VIEWS: { key: ExpenditureDistributionView; label: string }[] = [
   { key: 'zone', label: 'Zone' },
-  { key: 'formation', label: 'Formation' },
-  { key: 'school', label: 'School' },
+  { key: 'formations', label: 'Formations' },
+  { key: 'schools', label: 'Schools' },
   { key: 'summary', label: 'Summary' },
 ]
 
+const fmtCurrency = (n: number) =>
+  `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+// ── Distribution renderer (nested: period → group → unit → items) ─────────────
+const DistributionTable = ({ rows }: { rows: Record<string, unknown>[] }) => (
+  <div>
+    {rows.map((period) => {
+      const periodId = String(period.id ?? '')
+      const groupData = (period.data ?? {}) as Record<string, DistributionUnit[]>
+
+      return (
+        <div key={periodId}>
+          <div className="px-5 py-2.5 flex items-center gap-3" style={{ background: '#0d2137' }}>
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Period</span>
+            <span className="text-sm font-semibold text-white">{periodId}</span>
+          </div>
+
+          {Object.entries(groupData).map(([groupKey, units]) => (
+            <div key={groupKey}>
+              <div className="px-5 py-2 bg-slate-100 border-y border-slate-200">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                  {groupKey.replace(/_/g, ' ')}
+                </p>
+              </div>
+
+              {Array.isArray(units) && units.map((unit, ui) => (
+                <div key={ui} className="border-b border-slate-100">
+                  <div className="px-5 py-2.5 bg-white flex items-baseline gap-3 border-b border-slate-50">
+                    {unit.sno && (
+                      <span className="text-xs text-slate-400 font-mono shrink-0">{unit.sno}</span>
+                    )}
+                    <span className="text-sm font-semibold text-slate-800">{unit.name}</span>
+                  </div>
+
+                  {unit.items && unit.items.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full" style={{ fontSize: 12 }}>
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-100">
+                            <th className="text-left px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5, width: 70 }}>S/No</th>
+                            <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Code</th>
+                            <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide" style={{ fontSize: 10.5 }}>Description</th>
+                            <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Amount (₦)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {unit.items.map((item, ii) => {
+                            const total = (item.amounts ?? []).reduce((s: number, a: number) => s + a, 0)
+                            return (
+                              <tr
+                                key={ii}
+                                className={`border-t border-slate-50 hover:bg-blue-50 transition-colors ${ii % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
+                              >
+                                <td className="px-5 py-1.5 text-slate-400">{item.sno ?? ''}</td>
+                                <td className="px-3 py-1.5 font-mono text-slate-500 whitespace-nowrap">{item.code}</td>
+                                <td className="px-3 py-1.5 text-slate-700">{item.desc}</td>
+                                <td className="px-5 py-1.5 text-right text-slate-800 font-medium whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                  {fmtCurrency(total)}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )
+    })}
+  </div>
+)
+
+// ── Flat table for sub-item / aie views ───────────────────────────────────────
+const isAmtKey = (key: string) => /amount|budget|actual|total|gross|wht/i.test(key)
+
+const FlatTable = ({ rows }: { rows: Record<string, unknown>[] }) => {
+  if (rows.length === 0) return null
+  const cols = Object.keys(rows[0]).filter((k) => typeof rows[0][k] !== 'object')
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-100 bg-slate-50">
+            {cols.map((key) => (
+              <th
+                key={key}
+                className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap ${isAmtKey(key) ? 'text-right' : 'text-left'}`}
+              >
+                {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/\bId\b/gi, 'ID').trim()}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-50">
+          {rows.map((row, i) => (
+            <tr key={i} className="hover:bg-slate-50 transition-colors">
+              {cols.map((key) => {
+                const val = row[key]
+                const numVal = typeof val === 'number' ? val : Number(val)
+                const display = isAmtKey(key) && !isNaN(numVal)
+                  ? fmtCurrency(numVal)
+                  : String(val ?? '—')
+                return (
+                  <td
+                    key={key}
+                    className={`px-4 py-3 text-slate-700 whitespace-nowrap ${isAmtKey(key) ? 'text-right font-medium' : ''}`}
+                    style={isAmtKey(key) ? { fontVariantNumeric: 'tabular-nums' } : {}}
+                  >
+                    {display}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 const Expenditures = () => {
   const [view, setView] = useState<ExpenditureView>('sub-item')
   const [distView, setDistView] = useState<ExpenditureDistributionView>('zone')
@@ -41,10 +181,13 @@ const Expenditures = () => {
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-5 flex flex-wrap gap-3 items-center">
         <div className="flex gap-1">
           {VIEWS.map((v) => (
-            <button key={v.key} onClick={() => setView(v.key)}
+            <button
+              key={v.key}
+              onClick={() => setView(v.key)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 view === v.key ? 'bg-blue-700 text-white' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-              }`}>
+              }`}
+            >
               {v.label}
             </button>
           ))}
@@ -53,10 +196,13 @@ const Expenditures = () => {
         {view === 'distribution' && (
           <div className="flex gap-1 ml-3 pl-3 border-l border-slate-200">
             {DIST_VIEWS.map((v) => (
-              <button key={v.key} onClick={() => setDistView(v.key)}
+              <button
+                key={v.key}
+                onClick={() => setDistView(v.key)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   distView === v.key ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-                }`}>
+                }`}
+              >
                 {v.label}
               </button>
             ))}
@@ -75,33 +221,10 @@ const Expenditures = () => {
             description="No records found for the selected view."
             icon={<Receipt size={28} className="text-slate-300" />}
           />
+        ) : view === 'distribution' ? (
+          <DistributionTable rows={rows} />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  {Object.keys(rows[0]).slice(0, 8).map((key) => (
-                    <th key={key} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                      {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map((row, i) => (
-                  <tr key={i} className="hover:bg-slate-50 transition-colors">
-                    {Object.values(row).slice(0, 8).map((val, j) => (
-                      <td key={j} className="px-4 py-3 text-slate-700 whitespace-nowrap">
-                        {typeof val === 'number' && val > 1000
-                          ? `₦${val.toLocaleString()}`
-                          : String(val ?? '—')}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <FlatTable rows={rows} />
         )}
       </div>
     </div>

@@ -2,7 +2,7 @@ import apiClient from '../client'
 import { EXPENDITURES } from '../endpoints'
 
 export type ExpenditureView = 'sub-item' | 'distribution' | 'aie'
-export type ExpenditureDistributionView = 'zone' | 'formation' | 'school' | 'summary'
+export type ExpenditureDistributionView = 'zone' | 'formations' | 'schools' | 'summary'
 
 export interface GetExpendituresParams {
   view: ExpenditureView
