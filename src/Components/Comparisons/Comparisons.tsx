@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ArrowsLeftRight, CircleNotch } from '@phosphor-icons/react'
 import { useQuery } from '@tanstack/react-query'
 import { comparisonService } from '../../api/services/comparisonService'
+import { normalizeList } from '../../utils/normalizeList'
 import { PageHeader } from '../Common/PageHeader'
 import { EmptyState } from '../Common/EmptyState'
 
@@ -15,23 +16,22 @@ const Comparisons = () => {
   const { data: momData, isLoading: momLoading } = useQuery({
     queryKey: ['comparisons', 'mom', fiscalYear],
     queryFn: () => comparisonService.getMonthOverMonth({ fiscalYear }),
-    select: (r) => r.data.data,
+    select: (r) => normalizeList<Record<string, unknown>>(r.data),
     enabled: tab === 'month-over-month',
   })
 
   const { data: bvaData, isLoading: bvaLoading } = useQuery({
     queryKey: ['comparisons', 'bva', fiscalYear],
     queryFn: () => comparisonService.getBudgetVsActual({ fiscalYear }),
-    select: (r) => r.data.data,
+    select: (r) => normalizeList<Record<string, unknown>>(r.data),
     enabled: tab === 'budget-vs-actual',
   })
 
   const isLoading = tab === 'month-over-month' ? momLoading : bvaLoading
-  const rows: Record<string, unknown>[] = Array.isArray(momData) && tab === 'month-over-month'
-    ? momData
-    : Array.isArray(bvaData) && tab === 'budget-vs-actual'
-    ? bvaData
-    : []
+  const rows: Record<string, unknown>[] =
+    tab === 'month-over-month' ? (momData ?? []) :
+    tab === 'budget-vs-actual' ? (bvaData ?? []) :
+    []
 
   return (
     <div>

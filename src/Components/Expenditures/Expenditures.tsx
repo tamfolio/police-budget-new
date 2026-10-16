@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Receipt, CircleNotch } from '@phosphor-icons/react'
 import { useQuery } from '@tanstack/react-query'
 import { expenditureService, type ExpenditureView, type ExpenditureDistributionView } from '../../api/services/expenditureService'
+import { normalizeList } from '../../utils/normalizeList'
 import { PageHeader } from '../Common/PageHeader'
 import { EmptyState } from '../Common/EmptyState'
 
@@ -28,10 +29,10 @@ const Expenditures = () => {
       view,
       ...(view === 'distribution' ? { distributionView: distView } : {}),
     }),
-    select: (r) => r.data.data,
+    select: (r) => normalizeList<Record<string, unknown>>(r.data),
   })
 
-  const rows: Record<string, unknown>[] = Array.isArray(data) ? data : (data?.items ?? data?.rows ?? [])
+  const rows: Record<string, unknown>[] = data ?? []
 
   return (
     <div>

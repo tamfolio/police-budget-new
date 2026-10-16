@@ -26,7 +26,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
   const [items, setItems] = useState<LineItemRow[]>([{ lineItemId: '', subItemId: '', amount: '' }])
 
   const { data: deptRaw } = useDepartments()
-  const departments: Department[] = Array.isArray(deptRaw) ? deptRaw : []
+  const departments: Department[] = deptRaw ?? []
 
   const { mutate: create, isPending } = useCreateBudgetProposal()
 

@@ -5,18 +5,23 @@ import { getErrorMessage } from '../utils/errorHandlers'
 
 const QK = 'budget-codes'
 
+const unwrap = (res: { data: unknown }) => {
+  const d = res.data as Record<string, unknown>
+  return (d?.data ?? d) as Record<string, unknown> | unknown[]
+}
+
 export const useBudgetCodes = (search?: string) =>
   useQuery({
     queryKey: [QK, search],
     queryFn: () => budgetCodeService.getAll(search),
-    select: (res) => res.data.data,
+    select: unwrap,
   })
 
 export const useBudgetReference = (search?: string) =>
   useQuery({
     queryKey: [QK, 'reference', search],
     queryFn: () => budgetCodeService.getReference(search),
-    select: (res) => res.data.data,
+    select: unwrap,
     staleTime: 10 * 60 * 1000,
   })
 

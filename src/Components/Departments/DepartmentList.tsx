@@ -21,7 +21,7 @@ const DepartmentList = () => {
   const { mutate: update, isPending: updating } = useUpdateDepartment()
   const { mutate: deactivate, isPending: deactivating } = useDeactivateDepartment()
 
-  const departments: Department[] = Array.isArray(data) ? data : (data?.items ?? [])
+  const departments: Department[] = data ?? []
   const filtered = departments.filter((d) =>
     !search || d.name.toLowerCase().includes(search.toLowerCase()) || d.code?.toLowerCase().includes(search.toLowerCase())
   )

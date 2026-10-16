@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { departmentService } from '../api/services/departmentService'
 import { getErrorMessage } from '../utils/errorHandlers'
-import type { CreateDepartmentPayload } from '../types'
+import { normalizeList } from '../utils/normalizeList'
+import type { CreateDepartmentPayload, Department } from '../types'
 
 const QK = 'departments'
 
@@ -10,7 +11,7 @@ export const useDepartments = () =>
   useQuery({
     queryKey: [QK],
     queryFn: departmentService.getAll,
-    select: (res) => res.data.data,
+    select: (res) => normalizeList<Department>(res.data),
   })
 
 export const useDepartment = (id: string) =>
