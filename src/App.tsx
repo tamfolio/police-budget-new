@@ -26,6 +26,7 @@ import RoleList from './Components/Admin/RoleList'
 import AuditList from './Components/Audit/AuditList'
 import Repository from './Components/Repository/Repository'
 import Profile from './Components/Profile/Profile'
+import CapitalBudgetList from './Components/CapitalBudget/CapitalBudgetList'
 
 function App() {
   return (
@@ -59,6 +60,7 @@ function App() {
             <Route path="departments" element={<DepartmentList />} />
             <Route path="admin/users" element={<UserList />} />
             <Route path="admin/roles" element={<RoleList />} />
+            <Route path="capital-budget" element={<CapitalBudgetList />} />
             <Route path="audit" element={<AuditList />} />
             <Route path="repository" element={<Repository />} />
             <Route path="profile" element={<Profile />} />

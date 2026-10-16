@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, MagnifyingGlass, FunnelSimple, CaretDown, CheckCircle, Clock, XCircle } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, FunnelSimple, CaretDown, CheckCircle, Clock, XCircle, Trash } from '@phosphor-icons/react'
 import { useAIEs, useCreateAIE } from '../../hooks/useAIE'
 import { PageHeader } from '../Common/PageHeader'
 import { EmptyState } from '../Common/EmptyState'
@@ -65,19 +65,30 @@ const LineItemsPanel = ({ items }: { items: AIELineItem[] }) => (
   </tr>
 )
 
+// ── Create form line item row type ────────────────────────────────────────────
+interface LineRow { itemCode: string; subItemCode: string; amount: string }
+const blankRow = (): LineRow => ({ itemCode: '', subItemCode: '', amount: '' })
+
 // ── AIEList ───────────────────────────────────────────────────────────────────
 const AIEList = () => {
   const [search, setSearch] = useState('')
   const [yearFilter, setYearFilter] = useState(YEAR)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [createOpen, setCreateOpen] = useState(false)
+
+  // create form fields
   const [createYear, setCreateYear] = useState(YEAR)
+  const [aieNo, setAieNo] = useState('')
+  const [issueDate, setIssueDate] = useState('')
+  const [expiresOn, setExpiresOn] = useState('')
+  const [recipientUnit, setRecipientUnit] = useState('')
+  const [lineRows, setLineRows] = useState<LineRow[]>([blankRow()])
   const [createNotes, setCreateNotes] = useState('')
 
   const { data, isLoading } = useAIEs({ fiscalYear: yearFilter })
   const { mutate: createAIE, isPending: creating } = useCreateAIE()
 
-  const items: AIE[] = data ?? []
+  const items: AIE[] = Array.isArray(data) ? data : []
 
   const filtered = items.filter((a) => {
     if (!search) return true
@@ -92,14 +103,52 @@ const AIEList = () => {
   const toggleExpand = (id: string) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
 
+  const resetForm = () => {
+    setAieNo(''); setIssueDate(''); setExpiresOn('')
+    setRecipientUnit(''); setLineRows([blankRow()]); setCreateNotes('')
+    setCreateYear(YEAR)
+  }
+
+  const updateRow = (i: number, field: keyof LineRow, val: string) =>
+    setLineRows((rows) => rows.map((r, idx) => idx === i ? { ...r, [field]: val } : r))
+
+  const addRow = () => setLineRows((rows) => [...rows, blankRow()])
+  const removeRow = (i: number) =>
+    setLineRows((rows) => rows.length > 1 ? rows.filter((_, idx) => idx !== i) : rows)
+
+  const formValid =
+    aieNo.trim() && issueDate && recipientUnit.trim() &&
+    lineRows.some((r) => r.itemCode.trim() && r.subItemCode.trim() && Number(r.amount) > 0)
+
   const handleCreate = () => {
+    const validItems = lineRows.filter(
+      (r) => r.itemCode.trim() && r.subItemCode.trim() && Number(r.amount) > 0
+    )
     createAIE(
-      { fiscalYear: createYear, notes: createNotes || undefined },
-      { onSuccess: () => { setCreateOpen(false); setCreateNotes('') } }
+      {
+        fiscalYear: createYear,
+        aieNo: aieNo.trim(),
+        issueDate,
+        ...(expiresOn ? { expiresOn } : {}),
+        recipientUnit: recipientUnit.trim(),
+        lineItems: validItems.map((r) => ({
+          itemCode: r.itemCode.trim(),
+          subItemCode: r.subItemCode.trim(),
+          amount: Number(r.amount),
+        })),
+        ...(createNotes.trim() ? { notes: createNotes.trim() } : {}),
+      },
+      {
+        onSuccess: () => {
+          setCreateOpen(false)
+          resetForm()
+        },
+      }
     )
   }
 
-  const inputCls = 'w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-600'
+  const inp = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-600'
+  const lbl = 'block text-xs font-medium text-slate-600 mb-1'
 
   return (
     <div>
@@ -217,28 +266,122 @@ const AIEList = () => {
       </div>
 
       {/* Create modal */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New AIE" size="sm"
+      <Modal
+        open={createOpen}
+        onClose={() => { setCreateOpen(false); resetForm() }}
+        title="New AIE"
+        size="lg"
         footer={
           <>
-            <button onClick={() => setCreateOpen(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-            <button onClick={handleCreate} disabled={creating}
-              className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50">
+            <button onClick={() => { setCreateOpen(false); resetForm() }} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              Cancel
+            </button>
+            <button
+              onClick={handleCreate}
+              disabled={!formValid || creating}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50"
+            >
               {creating ? 'Creating…' : 'Create AIE'}
             </button>
           </>
         }
       >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Fiscal Year</label>
-            <select value={createYear} onChange={(e) => setCreateYear(Number(e.target.value))} className={inputCls}>
-              {[YEAR, YEAR - 1, YEAR - 2].map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
+        <div className="space-y-5">
+          {/* Row 1: AIE No + Fiscal Year */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={lbl}>AIE Number <span className="text-red-500">*</span></label>
+              <input value={aieNo} onChange={(e) => setAieNo(e.target.value)} placeholder="e.g. AIE/2026/001" className={inp} />
+            </div>
+            <div>
+              <label className={lbl}>Fiscal Year</label>
+              <select value={createYear} onChange={(e) => setCreateYear(Number(e.target.value))} className={inp}>
+                {[YEAR, YEAR - 1, YEAR - 2].map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
           </div>
+
+          {/* Row 2: Issue Date + Expires On */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={lbl}>Issue Date <span className="text-red-500">*</span></label>
+              <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className={lbl}>Expires On <span className="text-slate-400 font-normal">(defaults to +90 days)</span></label>
+              <input type="date" value={expiresOn} onChange={(e) => setExpiresOn(e.target.value)} className={inp} />
+            </div>
+          </div>
+
+          {/* Recipient Unit */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Notes</label>
-            <textarea rows={3} value={createNotes} onChange={(e) => setCreateNotes(e.target.value)}
-              placeholder="Optional notes…" className={`${inputCls} resize-none`} />
+            <label className={lbl}>Recipient Unit <span className="text-red-500">*</span></label>
+            <input value={recipientUnit} onChange={(e) => setRecipientUnit(e.target.value)} placeholder="e.g. Force Headquarters, Abuja" className={inp} />
+          </div>
+
+          {/* Line Items */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                Line Items <span className="text-red-500">*</span>
+              </label>
+              <button onClick={addRow} className="text-xs text-blue-700 font-medium hover:underline flex items-center gap-1">
+                <Plus size={11} weight="bold" /> Add Item
+              </button>
+            </div>
+
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="grid grid-cols-[1fr_1fr_120px_32px] gap-0 bg-slate-50 border-b border-slate-200 px-3 py-2">
+                {['Item Code', 'Sub-Item Code', 'Amount (₦)', ''].map((h) => (
+                  <span key={h} className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</span>
+                ))}
+              </div>
+              <div className="divide-y divide-slate-100">
+                {lineRows.map((row, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_120px_32px] gap-2 items-center px-3 py-2">
+                    <input
+                      value={row.itemCode}
+                      onChange={(e) => updateRow(i, 'itemCode', e.target.value)}
+                      placeholder="e.g. 2301"
+                      className="px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <input
+                      value={row.subItemCode}
+                      onChange={(e) => updateRow(i, 'subItemCode', e.target.value)}
+                      placeholder="e.g. 23010112"
+                      className="px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.amount}
+                      onChange={(e) => updateRow(i, 'amount', e.target.value)}
+                      placeholder="0.00"
+                      className="px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => removeRow(i)}
+                      disabled={lineRows.length === 1}
+                      className="p-1 text-slate-300 hover:text-red-500 disabled:opacity-0 transition-colors"
+                    >
+                      <Trash size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className={lbl}>Notes</label>
+            <textarea
+              rows={2}
+              value={createNotes}
+              onChange={(e) => setCreateNotes(e.target.value)}
+              placeholder="Optional notes…"
+              className={`${inp} resize-none`}
+            />
           </div>
         </div>
       </Modal>

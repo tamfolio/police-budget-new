@@ -2,18 +2,37 @@ import apiClient from '../client'
 import { AIE } from '../endpoints'
 import type { ReviewPayload, RejectPayload } from '../../types'
 
+export interface AieCreateLineItem {
+  itemCode: string
+  subItemCode: string
+  amount: number
+}
+
 export interface CreateAIEPayload {
   fiscalYear: number
+  aieNo: string
+  issueDate: string
+  expiresOn?: string
+  recipientUnit: string
+  lineItems: AieCreateLineItem[]
   notes?: string
 }
 
 export interface UpdateAIEPayload {
+  fiscalYear?: number
+  aieNo?: string
+  issueDate?: string
+  expiresOn?: string
+  recipientUnit?: string
+  lineItems?: AieCreateLineItem[]
   notes?: string
 }
 
 export interface GetAIEsParams {
   fiscalYear?: number
   status?: string
+  createdById?: string
+  expiringBefore?: string
 }
 
 export interface AIEReportParams {

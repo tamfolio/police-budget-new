@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   SquaresFour, ArrowDown, Wallet, MapTrifold, ClipboardText, Tag,
   ChartBar, ArrowsLeftRight, Receipt, Buildings, UsersThree,
-  Notepad, Database, X, CaretDown, CaretRight, SignOut,
+  Notepad, Database, X, CaretDown, CaretRight, SignOut, Coins,
 } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { getUserData } from '../../utils/auth'
@@ -31,6 +31,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { label: 'Distributions',    to: '/dashboard/distributions',    icon: MapTrifold },
       { label: 'Budget Proposals', to: '/dashboard/budget-proposals', icon: ClipboardText },
       { label: 'Budget Codes',     to: '/dashboard/budget-codes',     icon: Tag },
+      { label: 'Capital Budget',   to: '/dashboard/capital-budget',   icon: Coins },
     ],
   },
   {

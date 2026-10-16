@@ -221,6 +221,11 @@ export interface AIEImport {
 
 export interface CreateAIEPayload {
   fiscalYear: number
+  aieNo: string
+  issueDate: string
+  expiresOn?: string
+  recipientUnit: string
+  lineItems: { itemCode: string; subItemCode: string; amount: number }[]
   notes?: string
 }
 
@@ -448,6 +453,62 @@ export interface RepositoryTableSummary {
   name: string
   rowCount: number
   lastUpdated?: string
+}
+
+// ─── Capital Budget ───────────────────────────────────────────────────────────
+
+export type CapitalBudgetItemType = 'ONGOING' | 'NEW'
+
+export interface CapitalBudgetItem {
+  id: string
+  title: string
+  entity: string
+  ergCode: string
+  description: string
+  fiscalYear?: number
+  type?: CapitalBudgetItemType
+  amountNgn?: number | null
+  page?: number | null
+  currency?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface CreateCapitalBudgetItemPayload {
+  title: string
+  entity: string
+  ergCode: string
+  description: string
+  fiscalYear?: number
+  type?: CapitalBudgetItemType
+  amountNgn?: number | null
+  page?: number | null
+  currency?: string
+}
+
+export interface GetCapitalBudgetItemsParams {
+  fiscalYear?: number
+  ergCode?: string
+  type?: CapitalBudgetItemType
+  docPage?: number
+  search?: string
+  page?: number
+  limit?: number
+}
+
+export interface CapitalBudgetPreviewRow {
+  rowNumber: number
+  data: Record<string, unknown>
+  valid: boolean
+  errors?: string[]
+}
+
+export interface CapitalBudgetImportPreview {
+  valid: CapitalBudgetPreviewRow[]
+  invalid: CapitalBudgetPreviewRow[]
+  totalRows: number
+  validCount: number
+  invalidCount: number
 }
 
 // ─── Expenditures ─────────────────────────────────────────────────────────────

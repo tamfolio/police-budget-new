@@ -13,6 +13,7 @@ export const useAIEs = (params?: GetAIEsParams) =>
     select: (res) => {
       const d = res.data
       if (Array.isArray(d)) return d as import('../types').AIE[]
+      if (Array.isArray(d?.items)) return d.items as import('../types').AIE[]
       if (Array.isArray(d?.data)) return d.data as import('../types').AIE[]
       return [] as import('../types').AIE[]
     },

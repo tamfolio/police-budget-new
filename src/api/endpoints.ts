@@ -123,6 +123,17 @@ export const AUDIT = {
   ENTRIES: '/audit/entries',
 }
 
+// Capital Budget
+export const CAPITAL_BUDGET = {
+  LIST: '/capital-budget-items',
+  CREATE: '/capital-budget-items',
+  IMPORT_PREVIEW: '/capital-budget-items/import/preview',
+  IMPORT_COMMIT: '/capital-budget-items/import/commit',
+  GET: (id: string) => `/capital-budget-items/${id}`,
+  UPDATE: (id: string) => `/capital-budget-items/${id}`,
+  DELETE: (id: string) => `/capital-budget-items/${id}`,
+}
+
 // Storage
 export const STORAGE = {
   PRESIGN: '/storage/presign',
