@@ -1,21 +1,12 @@
 import { useState } from 'react'
 import { Plus, ShieldCheck, Trash, PencilSimple, Check } from '@phosphor-icons/react'
-import { useRoles, useCreateRole, useUpdateRole, useDeleteRole } from '../../hooks/useAdmin'
+import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, usePermissions } from '../../hooks/useAdmin'
 import { PageHeader } from '../Common/PageHeader'
 import { EmptyState } from '../Common/EmptyState'
 import { PageLoader } from '../Common/LoadingSpinner'
 import { Modal } from '../Common/Modal'
 import { ConfirmDialog } from '../Common/ConfirmDialog'
-import type { Role } from '../../types'
-
-const PERMISSION_GROUPS = [
-  { group: 'Fund Inflows', permissions: ['fund_inflows.view', 'fund_inflows.create', 'fund_inflows.edit', 'fund_inflows.approve', 'fund_inflows.delete'] },
-  { group: 'AIE', permissions: ['aie.view', 'aie.create', 'aie.edit', 'aie.approve', 'aie.delete'] },
-  { group: 'Distributions', permissions: ['distributions.view', 'distributions.create', 'distributions.edit', 'distributions.approve'] },
-  { group: 'Budget Proposals', permissions: ['proposals.view', 'proposals.create', 'proposals.edit', 'proposals.approve'] },
-  { group: 'Reports', permissions: ['reports.view', 'reports.export'] },
-  { group: 'Administration', permissions: ['admin.users', 'admin.roles', 'admin.departments', 'audit.view'] },
-]
+import type { Role, Permission } from '../../types'
 
 const RoleList = () => {
   const [formOpen, setFormOpen] = useState(false)
@@ -27,8 +18,19 @@ const RoleList = () => {
   const { mutate: create, isPending: creating } = useCreateRole()
   const { mutate: update, isPending: updating } = useUpdateRole()
   const { mutate: remove, isPending: deleting } = useDeleteRole()
+  const { data: permissionsRaw } = usePermissions()
 
   const roles: Role[] = data?.roles ?? []
+  const allPermissions: Permission[] = permissionsRaw ?? []
+
+  // Group permissions by the first segment of their code (e.g. "fund_inflows.view" → "Fund Inflows")
+  const permissionGroups = allPermissions.reduce<Record<string, Permission[]>>((acc, p) => {
+    const key = (p.code ?? '').split('.')[0]
+    const label = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || 'Other'
+    if (!acc[label]) acc[label] = []
+    acc[label].push(p)
+    return acc
+  }, {})
 
   const openCreate = () => {
     setEditRole(null)
@@ -136,25 +138,34 @@ const RoleList = () => {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-3">Permissions</label>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Permissions
+              {allPermissions.length === 0 && (
+                <span className="ml-2 text-xs font-normal text-slate-400">(loading…)</span>
+              )}
+            </label>
             <div className="space-y-4 max-h-72 overflow-y-auto pr-1">
-              {PERMISSION_GROUPS.map((g) => (
-                <div key={g.group}>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{g.group}</p>
+              {Object.entries(permissionGroups).map(([group, perms]) => (
+                <div key={group}>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{group}</p>
                   <div className="flex flex-wrap gap-2">
-                    {g.permissions.map((p) => {
-                      const active = form.permissions.includes(p)
+                    {perms.map((p) => {
+                      const active = form.permissions.includes(p.id)
+                      const label = p.name || p.code?.split('.').slice(1).join('.') || p.id
                       return (
-                        <button key={p} type="button" onClick={() => togglePermission(p)}
+                        <button key={p.id} type="button" onClick={() => togglePermission(p.id)}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${active ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}>
                           {active && <Check size={11} weight="bold" />}
-                          {p.split('.')[1]}
+                          {label}
                         </button>
                       )
                     })}
                   </div>
                 </div>
               ))}
+              {allPermissions.length === 0 && (
+                <p className="text-sm text-slate-400 py-4 text-center">No permissions available</p>
+              )}
             </div>
           </div>
         </div>

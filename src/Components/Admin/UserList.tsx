@@ -16,6 +16,7 @@ const UserList = () => {
   const [editUser, setEditUser] = useState<User | null>(null)
   const [deactivateId, setDeactivateId] = useState<string | null>(null)
   const [inviteLines, setInviteLines] = useState('')
+  const [inviteRole, setInviteRole] = useState('')
   const [newRole, setNewRole] = useState('')
 
   const { data, isLoading } = useAdminUsers()
@@ -42,10 +43,10 @@ const UserList = () => {
       .filter(Boolean)
       .map((line) => {
         const match = line.match(/^(.+?)\s*<([^>]+)>$/)
-        if (match) return { fullName: match[1].trim(), email: match[2].trim() }
-        return { fullName: line.split('@')[0], email: line }
+        if (match) return { fullName: match[1].trim(), email: match[2].trim(), roleId: inviteRole }
+        return { fullName: line.split('@')[0], email: line, roleId: inviteRole }
       })
-    invite(users, { onSuccess: () => { setInviteOpen(false); setInviteLines('') } })
+    invite(users, { onSuccess: () => { setInviteOpen(false); setInviteLines(''); setInviteRole('') } })
   }
 
   const handleRoleUpdate = () => {
@@ -175,7 +176,7 @@ const UserList = () => {
             </button>
             <button
               onClick={handleInvite}
-              disabled={inviting || !inviteLines.trim()}
+              disabled={inviting || !inviteLines.trim() || !inviteRole}
               className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50"
             >
               {inviting ? 'Sending…' : 'Send Invites'}
@@ -183,18 +184,29 @@ const UserList = () => {
           </>
         }
       >
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            Email Addresses
-          </label>
-          <textarea
-            rows={4}
-            value={inviteLines}
-            onChange={(e) => setInviteLines(e.target.value)}
-            placeholder={"John Doe <john@npf.gov.ng>\njane@npf.gov.ng"}
-            className={`${inputCls} resize-none font-mono text-xs`}
-          />
-          <p className="text-xs text-slate-400 mt-1.5">One per line. Format: <code>Full Name &lt;email&gt;</code> or just email address.</p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Role *</label>
+            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className={inputCls}>
+              <option value="">Select a role…</option>
+              {availableRoles.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Email Addresses
+            </label>
+            <textarea
+              rows={4}
+              value={inviteLines}
+              onChange={(e) => setInviteLines(e.target.value)}
+              placeholder={"John Doe <john@npf.gov.ng>\njane@npf.gov.ng"}
+              className={`${inputCls} resize-none font-mono text-xs`}
+            />
+            <p className="text-xs text-slate-400 mt-1.5">One per line. Format: <code>Full Name &lt;email&gt;</code> or just email address.</p>
+          </div>
         </div>
       </Modal>
 

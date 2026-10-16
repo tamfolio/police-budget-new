@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { adminService, type GetUsersParams, type CreateRolePayload, type UpdateRolePayload, type CreatePermissionPayload } from '../api/services/adminService'
+import { adminService, type GetUsersParams, type GetRolesParams, type CreateRolePayload, type UpdateRolePayload, type CreatePermissionPayload } from '../api/services/adminService'
 import { getErrorMessage } from '../utils/errorHandlers'
+import { normalizeList } from '../utils/normalizeList'
+import type { Permission } from '../types'
 
 export const useUsers = (params?: GetUsersParams) =>
   useQuery({
@@ -48,11 +50,16 @@ export const useRole = (id: string) =>
     enabled: Boolean(id),
   })
 
-export const usePermissions = (params?: GetUsersParams) =>
+export const usePermissions = () =>
   useQuery({
-    queryKey: ['permissions', params],
-    queryFn: () => adminService.getPermissions(params),
-    select: (res) => res.data.data,
+    queryKey: ['permissions'],
+    queryFn: () => adminService.getPermissions({ pageSize: 200, pageNumber: 1 } as GetRolesParams),
+    select: (res) => {
+      const d = res.data as Record<string, unknown>
+      const inner = (d?.data ?? d) as Record<string, unknown>
+      return (Array.isArray(inner) ? inner : (inner?.permissions ?? [])) as Permission[]
+    },
+    staleTime: 5 * 60 * 1000,
   })
 
 export const useCreateRole = () => {
