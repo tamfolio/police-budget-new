@@ -20,6 +20,12 @@ interface DistributionUnit {
   items: DistributionItem[]
 }
 
+interface DistributionSection {
+  name: string
+  items: DistributionItem[]
+  provisions: (number | null)[]
+}
+
 const VIEWS: { key: ExpenditureView; label: string }[] = [
   { key: 'sub-item', label: 'By Sub-item' },
   { key: 'distribution', label: 'By Distribution' },
@@ -36,73 +42,154 @@ const DIST_VIEWS: { key: ExpenditureDistributionView; label: string }[] = [
 const fmtCurrency = (n: number) =>
   `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-// ── Distribution renderer (nested: period → group → unit → items) ─────────────
+// ── Shared items table used by both distribution shapes ───────────────────────
+const ItemsTable = ({ items, provision }: { items: DistributionItem[]; provision?: number | null }) => (
+  <div className="overflow-x-auto">
+    <table className="w-full" style={{ fontSize: 12 }}>
+      <thead>
+        <tr className="bg-slate-50 border-b border-slate-100">
+          <th className="text-left px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5, width: 70 }}>S/No</th>
+          <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Code</th>
+          <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide" style={{ fontSize: 10.5 }}>Description</th>
+          <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Amount (₦)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item, ii) => {
+          const total = (item.amounts ?? []).reduce((s: number, a: number | null) => s + (a ?? 0), 0)
+          const hasAmount = (item.amounts ?? []).some((a) => a != null)
+          return (
+            <tr
+              key={ii}
+              className={`border-t border-slate-50 hover:bg-blue-50 transition-colors ${ii % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
+            >
+              <td className="px-5 py-1.5 text-slate-400">{item.sno ?? ''}</td>
+              <td className="px-3 py-1.5 font-mono text-slate-500 whitespace-nowrap">{item.code}</td>
+              <td className="px-3 py-1.5 text-slate-700">{item.desc}</td>
+              <td className="px-5 py-1.5 text-right text-slate-800 font-medium whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {hasAmount ? fmtCurrency(total) : '—'}
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+      {provision != null && (
+        <tfoot>
+          <tr className="border-t-2 border-slate-200 bg-slate-50">
+            <td colSpan={3} className="px-5 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide">Total Provision</td>
+            <td className="px-5 py-2 text-right text-sm font-bold text-slate-900 whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {fmtCurrency(provision)}
+            </td>
+          </tr>
+        </tfoot>
+      )}
+    </table>
+  </div>
+)
+
+// ── Distribution renderer — handles two shapes:
+//   Zone:       period.data  → { [groupKey]: DistributionUnit[] }
+//   Formations: period.sections → DistributionSection[]
 const DistributionTable = ({ rows }: { rows: Record<string, unknown>[] }) => (
   <div>
     {rows.map((period) => {
       const periodId = String(period.id ?? '')
-      const groupData = (period.data ?? {}) as Record<string, DistributionUnit[]>
+      const periodLabel = period.label ? String(period.label) : periodId
+
+      const sections = period.sections as DistributionSection[] | undefined
+      const groupData = period.data as Record<string, DistributionUnit[]> | undefined
 
       return (
         <div key={periodId}>
           <div className="px-5 py-2.5 flex items-center gap-3" style={{ background: '#0d2137' }}>
             <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Period</span>
-            <span className="text-sm font-semibold text-white">{periodId}</span>
+            <span className="text-sm font-semibold text-white">{periodLabel}</span>
           </div>
 
-          {Object.entries(groupData).map(([groupKey, units]) => (
-            <div key={groupKey}>
-              <div className="px-5 py-2 bg-slate-100 border-y border-slate-200">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
-                  {groupKey.replace(/_/g, ' ')}
-                </p>
-              </div>
-
-              {Array.isArray(units) && units.map((unit, ui) => (
-                <div key={ui} className="border-b border-slate-100">
-                  <div className="px-5 py-2.5 bg-white flex items-baseline gap-3 border-b border-slate-50">
-                    {unit.sno && (
-                      <span className="text-xs text-slate-400 font-mono shrink-0">{unit.sno}</span>
-                    )}
-                    <span className="text-sm font-semibold text-slate-800">{unit.name}</span>
-                  </div>
-
-                  {unit.items && unit.items.length > 0 && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full" style={{ fontSize: 12 }}>
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-100">
-                            <th className="text-left px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5, width: 70 }}>S/No</th>
-                            <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Code</th>
-                            <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide" style={{ fontSize: 10.5 }}>Description</th>
-                            <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Amount (₦)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {unit.items.map((item, ii) => {
-                            const total = (item.amounts ?? []).reduce((s: number, a: number) => s + a, 0)
-                            return (
-                              <tr
-                                key={ii}
-                                className={`border-t border-slate-50 hover:bg-blue-50 transition-colors ${ii % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
-                              >
-                                <td className="px-5 py-1.5 text-slate-400">{item.sno ?? ''}</td>
-                                <td className="px-3 py-1.5 font-mono text-slate-500 whitespace-nowrap">{item.code}</td>
-                                <td className="px-3 py-1.5 text-slate-700">{item.desc}</td>
-                                <td className="px-5 py-1.5 text-right text-slate-800 font-medium whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                  {fmtCurrency(total)}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+          {Array.isArray(period.rows) ? (
+            // Summary shape: flat rows with name / fromDist / allocation
+            (() => {
+              const summaryRows = period.rows as { name: string; fromDist: number; allocation: number }[]
+              const totalFromDist = summaryRows.reduce((s, r) => s + (r.fromDist ?? 0), 0)
+              const totalAllocation = summaryRows.reduce((s, r) => s + (r.allocation ?? 0), 0)
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full" style={{ fontSize: 12 }}>
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        <th className="text-left px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide" style={{ fontSize: 10.5 }}>#</th>
+                        <th className="text-left px-3 py-2 text-slate-400 font-semibold uppercase tracking-wide" style={{ fontSize: 10.5 }}>Name</th>
+                        <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>From Distribution (₦)</th>
+                        <th className="text-right px-5 py-2 text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ fontSize: 10.5 }}>Allocation (₦)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summaryRows.map((row, ri) => (
+                        <tr key={ri} className={`border-t border-slate-50 hover:bg-blue-50 transition-colors ${ri % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                          <td className="px-5 py-1.5 text-slate-400 tabular-nums">{ri + 1}</td>
+                          <td className="px-3 py-1.5 text-slate-700">{row.name}</td>
+                          <td className="px-5 py-1.5 text-right text-slate-800 font-medium whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtCurrency(row.fromDist ?? 0)}</td>
+                          <td className="px-5 py-1.5 text-right text-slate-800 font-medium whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtCurrency(row.allocation ?? 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-slate-200 bg-slate-50">
+                        <td colSpan={2} className="px-5 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide">Grand Total</td>
+                        <td className="px-5 py-2 text-right text-sm font-bold text-slate-900 whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtCurrency(totalFromDist)}</td>
+                        <td className="px-5 py-2 text-right text-sm font-bold text-slate-900 whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtCurrency(totalAllocation)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
-              ))}
-            </div>
-          ))}
+              )
+            })()
+          ) : sections ? (
+            // Formations / Schools shape: flat sections array
+            sections.map((section, si) => (
+              <div key={si} className="border-b border-slate-100">
+                <div className="px-5 py-2.5 bg-slate-100 border-y border-slate-200">
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-widest">
+                    {section.name}
+                  </p>
+                </div>
+                {section.items && section.items.length > 0 && (
+                  <ItemsTable
+                    items={section.items}
+                    provision={
+                      section.provisions
+                        ? section.provisions.reduce((s, a) => s + (a ?? 0), 0)
+                        : null
+                    }
+                  />
+                )}
+              </div>
+            ))
+          ) : groupData ? (
+            // Zone shape: grouped by key → units → items
+            Object.entries(groupData).map(([groupKey, units]) => (
+              <div key={groupKey}>
+                <div className="px-5 py-2 bg-slate-100 border-y border-slate-200">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                    {groupKey.replace(/_/g, ' ')}
+                  </p>
+                </div>
+                {Array.isArray(units) && units.map((unit, ui) => (
+                  <div key={ui} className="border-b border-slate-100">
+                    <div className="px-5 py-2.5 bg-white flex items-baseline gap-3 border-b border-slate-50">
+                      {unit.sno && (
+                        <span className="text-xs text-slate-400 font-mono shrink-0">{unit.sno}</span>
+                      )}
+                      <span className="text-sm font-semibold text-slate-800">{unit.name}</span>
+                    </div>
+                    {unit.items && unit.items.length > 0 && (
+                      <ItemsTable items={unit.items} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))
+          ) : null}
         </div>
       )
     })}
