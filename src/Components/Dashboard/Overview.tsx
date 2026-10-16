@@ -113,7 +113,8 @@ const Overview = () => {
   const expendVals = chartArr.map((d) => d['Total Expenditure'] ?? 0)
 
   const user      = getUserData<User>()
-  const firstName = user ? getUserDisplayName(user).split(' ')[0] : 'Officer'
+  const displayName = user ? getUserDisplayName(user) : 'Officer'
+  const firstName   = displayName.includes('@') ? displayName.split('@')[0] : displayName.split(' ')[0]
 
   const numVal = (v: number | undefined) => (v != null ? fmt(v) : '—')
   const pctVal = (v: number | undefined) => (v != null ? `${v.toFixed(1)}%` : '—')

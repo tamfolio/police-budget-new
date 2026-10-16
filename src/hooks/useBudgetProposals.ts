@@ -10,7 +10,13 @@ export const useBudgetProposals = (params?: GetBudgetProposalsParams) =>
   useQuery({
     queryKey: [QK, params],
     queryFn: () => budgetProposalService.getAll(params),
-    select: (res) => res.data.data,
+    select: (res) => {
+      const d = res.data
+      if (Array.isArray(d)) return d
+      if (Array.isArray(d?.items)) return d.items
+      if (Array.isArray(d?.data)) return d.data
+      return []
+    },
   })
 
 export const useBudgetProposal = (id: string) =>

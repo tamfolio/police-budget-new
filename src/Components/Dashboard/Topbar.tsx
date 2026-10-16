@@ -31,6 +31,9 @@ const Topbar = ({ onMenuClick }: Props) => {
   const displayName = user ? getUserDisplayName(user) : 'User'
   const roleName    = user ? getUserRoleName(user)    : 'Officer'
   const initials    = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'
+  const firstName   = displayName.includes('@')
+    ? displayName.split('@')[0]
+    : displayName.split(' ')[0]
 
   return (
     <header style={{
@@ -90,7 +93,7 @@ const Topbar = ({ onMenuClick }: Props) => {
           {/* Greeting text — hidden on small screens */}
           <div className="hidden md:block" style={{ textAlign: 'right' }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, lineHeight: 1.3 }}>
-              {greeting()}, {displayName.split(' ')[0]}
+              {greeting()}, {firstName}
             </p>
             <p style={{ fontSize: 11, color: '#9ca3af', margin: 0, lineHeight: 1.3 }}>{roleName}</p>
           </div>

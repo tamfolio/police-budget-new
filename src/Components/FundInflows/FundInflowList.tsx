@@ -87,11 +87,12 @@ const FundInflowList = () => {
             className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="">All statuses</option>
-            <option value="draft">Draft</option>
-            <option value="submitted">Submitted</option>
-            <option value="under_review">Under Review</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
+            <option value="DRAFT">Draft</option>
+            <option value="SUBMITTED">Submitted</option>
+            <option value="PENDING_REVIEW">Under Review</option>
+            <option value="PENDING_APPROVAL">Pending Approval</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
           </select>
           <select
             value={yearFilter}
@@ -172,7 +173,7 @@ const FundInflowList = () => {
                                 </button>
                               </>
                             )}
-                            {s === 'under_review' && (
+                            {(s === 'pending_review' || s === 'pending_approval') && (
                               <button
                                 onClick={() => approveFI(fi.id)}
                                 className="text-xs text-green-700 hover:underline font-medium"

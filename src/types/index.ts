@@ -119,7 +119,7 @@ export interface BudgetReference {
 
 // ─── Fund Inflows ─────────────────────────────────────────────────────────────
 
-export type FundInflowStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected'
+export type FundInflowStatus = 'DRAFT' | 'SUBMITTED' | 'PENDING_REVIEW' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'
 
 export interface FundInflow {
   id: string
@@ -307,7 +307,7 @@ export interface DistributionAuditEntry {
 
 // ─── Budget Proposals ─────────────────────────────────────────────────────────
 
-export type BudgetProposalStatus = 'draft' | 'submitted' | 'reviewed' | 'approved' | 'rejected'
+export type BudgetProposalStatus = 'DRAFT' | 'SUBMITTED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'
 
 export interface BudgetProposalItem {
   id: string

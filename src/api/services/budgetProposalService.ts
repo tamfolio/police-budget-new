@@ -3,6 +3,7 @@ import { BUDGET_PROPOSALS } from '../endpoints'
 
 export interface BudgetProposalLineItem {
   lineItemId: string
+  subItemId: string
   amount: number
 }
 
@@ -24,7 +25,7 @@ export interface GetBudgetProposalsParams {
   fiscalYear?: number
   status?: string
   page?: number
-  pageSize?: number
+  limit?: number
 }
 
 export interface WorkbookReconciliationPayload {
@@ -42,7 +43,7 @@ export const budgetProposalService = {
   submit: (id: string) => apiClient.post(BUDGET_PROPOSALS.SUBMIT(id)),
   review: (id: string) => apiClient.post(BUDGET_PROPOSALS.REVIEW(id)),
   approve: (id: string) => apiClient.post(BUDGET_PROPOSALS.APPROVE(id)),
-  reject: (id: string, remarks: string) => apiClient.post(BUDGET_PROPOSALS.REJECT(id), { remarks }),
+  reject: (id: string, reason: string) => apiClient.post(BUDGET_PROPOSALS.REJECT(id), { reason }),
   getWorkbookReconciliations: (id: string) => apiClient.get(BUDGET_PROPOSALS.WORKBOOK_RECONCILIATIONS(id)),
   createWorkbookReconciliation: (id: string, payload: WorkbookReconciliationPayload) =>
     apiClient.post(BUDGET_PROPOSALS.WORKBOOK_RECONCILIATIONS(id), payload),

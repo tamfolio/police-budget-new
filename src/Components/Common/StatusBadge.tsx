@@ -4,6 +4,8 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700' },
   submitted: { label: 'Submitted', className: 'bg-blue-100 text-blue-700' },
   under_review: { label: 'Under Review', className: 'bg-amber-100 text-amber-700' },
+  pending_review: { label: 'Under Review', className: 'bg-amber-100 text-amber-700' },
+  pending_approval: { label: 'Pending Approval', className: 'bg-indigo-100 text-indigo-700' },
   reviewed: { label: 'Reviewed', className: 'bg-indigo-100 text-indigo-700' },
   approved: { label: 'Approved', className: 'bg-green-100 text-green-700' },
   rejected: { label: 'Rejected', className: 'bg-red-100 text-red-700' },

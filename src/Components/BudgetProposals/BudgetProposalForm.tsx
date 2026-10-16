@@ -9,6 +9,7 @@ const YEAR = new Date().getFullYear()
 
 interface LineItemRow {
   lineItemId: string
+  subItemId: string
   amount: string
 }
 
@@ -22,7 +23,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
   const [departmentId, setDepartmentId] = useState('')
   const [justification, setJustification] = useState('')
   const [notes, setNotes] = useState('')
-  const [items, setItems] = useState<LineItemRow[]>([{ lineItemId: '', amount: '' }])
+  const [items, setItems] = useState<LineItemRow[]>([{ lineItemId: '', subItemId: '', amount: '' }])
 
   const { data: deptRaw } = useDepartments()
   const departments: Department[] = Array.isArray(deptRaw) ? deptRaw : []
@@ -36,11 +37,11 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
       setDepartmentId('')
       setJustification('')
       setNotes('')
-      setItems([{ lineItemId: '', amount: '' }])
+      setItems([{ lineItemId: '', subItemId: '', amount: '' }])
     }
   }, [open])
 
-  const addItem = () => setItems((prev) => [...prev, { lineItemId: '', amount: '' }])
+  const addItem = () => setItems((prev) => [...prev, { lineItemId: '', subItemId: '', amount: '' }])
 
   const removeItem = (idx: number) =>
     setItems((prev) => prev.filter((_, i) => i !== idx))
@@ -50,7 +51,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    const validItems = items.filter((it) => it.lineItemId.trim() && it.amount)
+    const validItems = items.filter((it) => it.lineItemId.trim() && it.subItemId.trim() && it.amount)
     create(
       {
         fiscalYear,
@@ -59,6 +60,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
         notes: notes || undefined,
         items: validItems.map((it) => ({
           lineItemId: it.lineItemId.trim(),
+          subItemId: it.subItemId.trim(),
           amount: Number(it.amount),
         })),
       },
@@ -143,20 +145,28 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
           </div>
 
           <div className="border border-slate-200 rounded-lg overflow-hidden">
-            <div className="grid grid-cols-[1fr_160px_36px] bg-slate-50 border-b border-slate-200 px-3 py-2 gap-3">
+            <div className="grid grid-cols-[1fr_1fr_160px_36px] bg-slate-50 border-b border-slate-200 px-3 py-2 gap-3">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Line Item ID</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sub-Item ID</span>
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Amount (₦)</span>
               <span />
             </div>
 
             <div className="divide-y divide-slate-100">
               {items.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_160px_36px] items-center px-3 py-2 gap-3">
+                <div key={idx} className="grid grid-cols-[1fr_1fr_160px_36px] items-center px-3 py-2 gap-3">
                   <input
                     type="text"
                     value={item.lineItemId}
                     onChange={(e) => updateItem(idx, 'lineItemId', e.target.value)}
                     placeholder="AIE line item ID…"
+                    className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 font-mono"
+                  />
+                  <input
+                    type="text"
+                    value={item.subItemId}
+                    onChange={(e) => updateItem(idx, 'subItemId', e.target.value)}
+                    placeholder="Sub-item ID…"
                     className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 font-mono"
                   />
                   <input
@@ -166,7 +176,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
                     value={item.amount}
                     onChange={(e) => updateItem(idx, 'amount', e.target.value)}
                     placeholder="0.00"
-                    className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 text-right font-variant-numeric"
+                    className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 text-right"
                     style={{ fontVariantNumeric: 'tabular-nums' }}
                   />
                   <button
@@ -181,7 +191,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
               ))}
             </div>
           </div>
-          <p className="mt-1.5 text-xs text-slate-400">Items with a blank ID or zero amount will be skipped.</p>
+          <p className="mt-1.5 text-xs text-slate-400">Items missing an ID or with zero amount will be skipped.</p>
         </div>
       </form>
     </Modal>

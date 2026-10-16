@@ -53,11 +53,11 @@ const BudgetProposalList = () => {
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
             className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600">
             <option value="">All statuses</option>
-            <option value="draft">Draft</option>
-            <option value="submitted">Submitted</option>
-            <option value="reviewed">Reviewed</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
+            <option value="DRAFT">Draft</option>
+            <option value="SUBMITTED">Submitted</option>
+            <option value="PENDING_REVIEW">Under Review</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
           </select>
           <select value={yearFilter} onChange={(e) => setYearFilter(Number(e.target.value))}
             className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600">
@@ -97,7 +97,7 @@ const BudgetProposalList = () => {
                             {s === 'draft' && (
                               <button onClick={() => setSubmitId(p.id)} className="text-xs text-amber-700 hover:underline font-medium">Submit</button>
                             )}
-                            {s === 'reviewed' && (
+                            {s === 'pending_review' && (
                               <button onClick={() => setApproveId(p.id)} className="text-xs text-green-700 hover:underline font-medium">Approve</button>
                             )}
                           </div>
