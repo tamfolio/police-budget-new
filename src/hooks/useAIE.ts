@@ -90,3 +90,52 @@ export const useRejectAIE = () => {
     onError: (e: unknown) => toast.error(getErrorMessage(e)),
   })
 }
+
+export const useReopenAIE = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => aieService.reopen(id),
+    onSuccess: () => { toast.success('AIE reopened'); invalidate(qc) },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  })
+}
+
+export const useAIETotals = (fiscalYear: number) =>
+  useQuery({
+    queryKey: [QK, 'totals', fiscalYear],
+    queryFn: () => aieService.getTotals(fiscalYear),
+    select: (res) => {
+      const d = res.data as Record<string, unknown>
+      return ((d?.data ?? d) as Record<string, unknown>) ?? {}
+    },
+  })
+
+export const useAIEReport = (params?: { fiscalYear?: number; budgetCode?: string }) =>
+  useQuery({
+    queryKey: [QK, 'report', params],
+    queryFn: () => aieService.getReport(params),
+    select: (res) => {
+      const d = res.data as Record<string, unknown>
+      const inner = d?.data ?? d
+      return (Array.isArray(inner) ? inner : []) as Record<string, unknown>[]
+    },
+    enabled: Boolean(params?.fiscalYear),
+  })
+
+export const useImportAIE = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (fd: FormData) => aieService.importAIE(fd),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+    onSuccess: () => invalidate(qc),
+  })
+}
+
+export const useApproveAIEImport = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (importId: string) => aieService.approveImport(importId),
+    onSuccess: () => { toast.success('Import approved — AIEs loaded'); invalidate(qc) },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  })
+}

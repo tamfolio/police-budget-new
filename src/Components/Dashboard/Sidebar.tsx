@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   SquaresFour, ArrowDown, Wallet, MapTrifold, ClipboardText, Tag,
   ChartBar, ArrowsLeftRight, Receipt, Buildings, UsersThree,
-  Notepad, Database, X, CaretDown, CaretRight, SignOut, Coins,
+  Notepad, X, CaretDown, CaretRight, SignOut, Coins,
 } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { getUserData } from '../../utils/auth'
@@ -54,8 +54,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
           { label: 'Roles', to: '/dashboard/admin/roles' },
         ],
       },
-      { label: 'Audit Trail', to: '/dashboard/audit',      icon: Notepad },
-      { label: 'Repository',  to: '/dashboard/repository', icon: Database },
+      { label: 'Audit Trail', to: '/dashboard/audit', icon: Notepad },
     ],
   },
 ]

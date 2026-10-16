@@ -305,9 +305,31 @@ const ImportFlow = ({ onClose }: { onClose: () => void }) => {
         ) : (
           <>
             <p className="text-sm font-medium text-slate-600">Click to select CSV file</p>
-            <p className="text-xs text-slate-400 mt-1">Columns: <span className="font-mono">erg_code, description, type, amount_ngn, page</span></p>
+            <p className="text-xs text-slate-400 mt-1">Required columns: <span className="font-mono">erg_code, description, type, amount_ngn, page</span></p>
           </>
         )}
+      </div>
+
+      {/* Sample CSV */}
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', margin: 0 }}>Sample CSV</p>
+          <button
+            type="button"
+            onClick={() => {
+              const sample = `erg_code,description,type,amount_ngn,page\nERGP001,Construction of Police Barracks,ONGOING,150000000,210\nERGP002,Purchase of patrol vehicles,NEW,75000000,211`
+              const blob = new Blob([sample], { type: 'text/csv' })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url; a.download = 'capital_budget_sample.csv'; a.click()
+              URL.revokeObjectURL(url)
+            }}
+            style={{ fontSize: 11, fontWeight: 600, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            Download sample
+          </button>
+        </div>
+        <pre style={{ margin: 0, fontSize: 11, color: '#475569', fontFamily: 'monospace', overflowX: 'auto', whiteSpace: 'pre' }}>{`erg_code,description,type,amount_ngn,page\nERGP001,Construction of Police Barracks,ONGOING,150000000,210\nERGP002,Purchase of patrol vehicles,NEW,75000000,211`}</pre>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
