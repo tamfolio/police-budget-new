@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { MapTrifold, CircleNotch, CaretDown } from '@phosphor-icons/react'
-import { useDistributions } from '../../hooks/useDistributions'
+import { MapTrifold, CircleNotch, CaretDown, Plus, PencilSimple, Trash } from '@phosphor-icons/react'
+import { useDistributions, useCreateDistribution, useUpdateDistribution, useDeleteDistribution } from '../../hooks/useDistributions'
 import { PageHeader } from '../Common/PageHeader'
 import { EmptyState } from '../Common/EmptyState'
+import { Modal } from '../Common/Modal'
+import { ConfirmDialog } from '../Common/ConfirmDialog'
 import type { DistributionView } from '../../api/services/distributionService'
 import type {
   DistributionPeriod,
@@ -376,7 +378,16 @@ const DistributionList = () => {
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null)
   const [groupsOpen, setGroupsOpen] = useState<Record<string, boolean>>({})
 
+  // period CRUD state
+  const [addOpen, setAddOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [periodLabel, setPeriodLabel] = useState('')
+
   const { data: rawData, isLoading } = useDistributions({ view })
+  const { mutate: createPeriod, isPending: creating } = useCreateDistribution()
+  const { mutate: updatePeriod, isPending: updating } = useUpdateDistribution()
+  const { mutate: deletePeriod, isPending: deleting } = useDeleteDistribution()
 
   const periods: DistributionPeriod[] = Array.isArray(rawData) ? rawData : []
   const activePeriodId = selectedPeriodId ?? periods[0]?.id ?? null
@@ -399,11 +410,48 @@ const DistributionList = () => {
     setGroupsOpen(Object.fromEntries(groupKeys.map((k) => [k, next])))
   }
 
+  const openAdd = () => { setPeriodLabel(''); setAddOpen(true) }
+  const openEdit = () => {
+    if (!activePeriod) return
+    setPeriodLabel(activePeriod.label ?? activePeriod.id)
+    setEditOpen(true)
+  }
+  const handleAdd = () => {
+    createPeriod(
+      { view, payload: { label: periodLabel } },
+      { onSuccess: () => setAddOpen(false) }
+    )
+  }
+  const handleEdit = () => {
+    if (!activePeriod) return
+    updatePeriod(
+      { periodId: activePeriod.id, view, payload: { label: periodLabel } },
+      { onSuccess: () => setEditOpen(false) }
+    )
+  }
+  const handleDelete = () => {
+    if (!deleteId) return
+    deletePeriod(
+      { periodId: deleteId, view },
+      { onSuccess: () => { setDeleteId(null); setSelectedPeriodId(null) } }
+    )
+  }
+
+  const inputCls = 'w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-600'
+
   return (
     <div>
       <PageHeader
         title="Distributions"
         subtitle="Budget distributions across zones and formations"
+        actions={
+          <button
+            onClick={openAdd}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-semibold rounded-lg hover:bg-blue-800 transition-colors"
+          >
+            <Plus size={16} weight="bold" /> Add Period
+          </button>
+        }
       />
 
       {/* View tabs */}
@@ -478,23 +526,63 @@ const DistributionList = () => {
                     {activePeriod.columns?.join(' · ')}
                     {groupKeys.length > 0 && ` · ${groupKeys.length} ${groupKeys.length === 1 ? 'section' : 'sections'}`}
                   </p>
-                  {groupKeys.length > 1 && !activePeriod.rows && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {groupKeys.length > 1 && !activePeriod.rows && (
+                      <button
+                        onClick={toggleAll}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: '#0d2137',
+                          background: '#f5f7fa',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 6,
+                          padding: '5px 12px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {allOpen ? 'Collapse All' : 'Expand All'}
+                      </button>
+                    )}
                     <button
-                      onClick={toggleAll}
+                      onClick={openEdit}
+                      title="Edit period"
                       style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
                         fontSize: 12,
                         fontWeight: 500,
-                        color: '#0d2137',
+                        color: '#374151',
                         background: '#f5f7fa',
                         border: '1px solid #e5e7eb',
                         borderRadius: 6,
-                        padding: '5px 12px',
+                        padding: '5px 10px',
                         cursor: 'pointer',
                       }}
                     >
-                      {allOpen ? 'Collapse All' : 'Expand All'}
+                      <PencilSimple size={13} /> Edit
                     </button>
-                  )}
+                    <button
+                      onClick={() => setDeleteId(activePeriod.id)}
+                      title="Delete period"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: '#dc2626',
+                        background: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        borderRadius: 6,
+                        padding: '5px 10px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Trash size={13} /> Delete
+                    </button>
+                  </div>
                 </div>
 
                 {IS_DEV && (
@@ -553,6 +641,84 @@ const DistributionList = () => {
           </div>
         )}
       </div>
+
+      {/* Add Period modal */}
+      <Modal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        title="Add Distribution Period"
+        size="sm"
+        footer={
+          <>
+            <button onClick={() => setAddOpen(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              Cancel
+            </button>
+            <button
+              onClick={handleAdd}
+              disabled={creating || !periodLabel.trim()}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50"
+            >
+              {creating ? 'Creating…' : 'Create Period'}
+            </button>
+          </>
+        }
+      >
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Period Label</label>
+          <input
+            value={periodLabel}
+            onChange={(e) => setPeriodLabel(e.target.value)}
+            placeholder="e.g. Q1 2026"
+            className={inputCls}
+            autoFocus
+          />
+        </div>
+      </Modal>
+
+      {/* Edit Period modal */}
+      <Modal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        title="Edit Distribution Period"
+        size="sm"
+        footer={
+          <>
+            <button onClick={() => setEditOpen(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              Cancel
+            </button>
+            <button
+              onClick={handleEdit}
+              disabled={updating || !periodLabel.trim()}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50"
+            >
+              {updating ? 'Saving…' : 'Save Changes'}
+            </button>
+          </>
+        }
+      >
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">Period Label</label>
+          <input
+            value={periodLabel}
+            onChange={(e) => setPeriodLabel(e.target.value)}
+            placeholder="e.g. Q1 2026"
+            className={inputCls}
+            autoFocus
+          />
+        </div>
+      </Modal>
+
+      {/* Delete Period confirm */}
+      <ConfirmDialog
+        open={Boolean(deleteId)}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Period"
+        message="Are you sure you want to delete this distribution period? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   )
 }

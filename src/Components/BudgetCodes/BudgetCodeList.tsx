@@ -5,7 +5,7 @@ import { PageHeader } from '../Common/PageHeader'
 import { StatusBadge } from '../Common/StatusBadge'
 import { EmptyState } from '../Common/EmptyState'
 import { PageLoader } from '../Common/LoadingSpinner'
-import type { BudgetCategory } from '../../types'
+import type { BudgetCategory, FiscalYear } from '../../types'
 
 const BudgetCodeList = () => {
   const [search, setSearch] = useState('')
@@ -17,7 +17,7 @@ const BudgetCodeList = () => {
   const { mutate: updateYear } = useUpdateFiscalYearStatus()
 
   const categories: BudgetCategory[] = Array.isArray(codesData) ? codesData : (codesData?.categories ?? [])
-  const fiscalYears = refData?.fiscalYears ?? []
+  const fiscalYears: FiscalYear[] = refData?.fiscalYears ?? []
 
   return (
     <div>

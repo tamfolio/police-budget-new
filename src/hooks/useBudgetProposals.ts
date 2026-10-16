@@ -54,7 +54,7 @@ export const useRejectBudgetProposal = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: RejectPayload }) =>
-      budgetProposalService.reject(id, payload),
+      budgetProposalService.reject(id, payload.reason),
     onSuccess: () => { toast.success('Proposal rejected'); invalidate(qc) },
     onError: (e: unknown) => toast.error(getErrorMessage(e)),
   })

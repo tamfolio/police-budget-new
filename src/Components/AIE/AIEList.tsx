@@ -77,7 +77,7 @@ const AIEList = () => {
   const { data, isLoading } = useAIEs({ fiscalYear: yearFilter })
   const { mutate: createAIE, isPending: creating } = useCreateAIE()
 
-  const items: AIE[] = Array.isArray(data) ? data : (data?.items ?? [])
+  const items: AIE[] = data ?? []
 
   const filtered = items.filter((a) => {
     if (!search) return true

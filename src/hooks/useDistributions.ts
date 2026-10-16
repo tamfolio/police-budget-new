@@ -58,6 +58,26 @@ export const useApproveDistribution = () => {
   })
 }
 
+export const useUpdateDistribution = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ periodId, view, payload }: { periodId: string; view: DistributionView; payload: Record<string, unknown> }) =>
+      distributionService.update(periodId, view, payload),
+    onSuccess: () => { toast.success('Distribution period updated'); invalidate(qc) },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  })
+}
+
+export const useDeleteDistribution = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ periodId, view }: { periodId: string; view: DistributionView }) =>
+      distributionService.delete(periodId, view),
+    onSuccess: () => { toast.success('Distribution period deleted'); invalidate(qc) },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  })
+}
+
 export const useReturnDistribution = () => {
   const qc = useQueryClient()
   return useMutation({

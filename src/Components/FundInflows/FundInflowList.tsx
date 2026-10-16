@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Plus, FunnelSimple, MagnifyingGlass, ArrowsClockwise } from '@phosphor-icons/react'
-import { useFundInflows, useFundInflowTotals, useDeleteFundInflow, useSubmitFundInflow, useApproveFundInflow, useRejectFundInflow } from '../../hooks/useFundInflows'
+import { Plus, FunnelSimple, MagnifyingGlass } from '@phosphor-icons/react'
+import { useFundInflows, useFundInflowTotals, useDeleteFundInflow, useSubmitFundInflow, useApproveFundInflow } from '../../hooks/useFundInflows'
 import { PageHeader } from '../Common/PageHeader'
 import { StatusBadge } from '../Common/StatusBadge'
 import { EmptyState } from '../Common/EmptyState'
@@ -21,14 +21,11 @@ const FundInflowList = () => {
   const [editItem, setEditItem] = useState<FundInflow | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [submitId, setSubmitId] = useState<string | null>(null)
-  const [rejectId, setRejectId] = useState<string | null>(null)
-
   const { data, isLoading } = useFundInflows({ fiscalYear: yearFilter, status: statusFilter || undefined })
   const { data: totalAmount } = useFundInflowTotals(yearFilter)
   const { mutate: deleteFI, isPending: deleting } = useDeleteFundInflow()
   const { mutate: submitFI, isPending: submitting } = useSubmitFundInflow()
   const { mutate: approveFI } = useApproveFundInflow()
-  const { mutate: rejectFI, isPending: rejecting } = useRejectFundInflow()
 
   const items: FundInflow[] = Array.isArray(data) ? data : []
 

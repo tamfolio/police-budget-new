@@ -1,6 +1,6 @@
 import { List, MagnifyingGlass, Bell, CaretDown, User, SignOut } from '@phosphor-icons/react'
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { getUserData } from '../../utils/auth'
 import { useLogout } from '../../hooks/useAuth'
 import { getUserDisplayName, getUserRoleName, type User as UserType } from '../../types'
@@ -15,7 +15,6 @@ interface Props { onMenuClick: () => void }
 const Topbar = ({ onMenuClick }: Props) => {
   const logout   = useLogout()
   const navigate = useNavigate()
-  const location = useLocation()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const user = getUserData<UserType>()
