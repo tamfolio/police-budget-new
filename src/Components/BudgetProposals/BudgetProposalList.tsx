@@ -23,7 +23,7 @@ const BudgetProposalList = () => {
   const { mutate: submitProposal, isPending: submitting } = useSubmitBudgetProposal()
   const { mutate: approveProposal, isPending: approving } = useApproveBudgetProposal()
 
-  const items: BudgetProposal[] = Array.isArray(data) ? data : (data?.items ?? [])
+  const items: BudgetProposal[] = data ?? []
 
   const filtered = items.filter((p) => {
     if (!search) return true

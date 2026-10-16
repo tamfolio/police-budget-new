@@ -16,8 +16,11 @@ const BudgetCodeList = () => {
   const { mutate: seedAll, isPending: seeding } = useSeedBudgetCodes()
   const { mutate: updateYear } = useUpdateFiscalYearStatus()
 
-  const categories: BudgetCategory[] = Array.isArray(codesData) ? codesData : (codesData?.categories ?? [])
-  const fiscalYears: FiscalYear[] = refData?.fiscalYears ?? []
+  const categories: BudgetCategory[] = Array.isArray(codesData)
+    ? (codesData as BudgetCategory[])
+    : (((codesData as Record<string, unknown>)?.categories as BudgetCategory[]) ?? [])
+  const fiscalYears: FiscalYear[] =
+    (((refData as Record<string, unknown>)?.fiscalYears as FiscalYear[]) ?? [])
 
   return (
     <div>

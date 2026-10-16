@@ -177,7 +177,7 @@ const DistributionTable = ({ rows }: { rows: Record<string, unknown>[] }) => (
                     items={section.items}
                     provision={
                       section.provisions
-                        ? section.provisions.reduce((s, a) => s + (a ?? 0), 0)
+                        ? section.provisions.reduce<number>((s, a) => s + (a ?? 0), 0)
                         : null
                     }
                   />

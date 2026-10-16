@@ -3,7 +3,7 @@ import { BUDGET_PROPOSALS } from '../endpoints'
 
 export interface BudgetProposalLineItem {
   lineItemId: string
-  subItemId: string
+  subItemId?: string
   amount: number
 }
 
