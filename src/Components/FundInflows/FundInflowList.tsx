@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, FunnelSimple, MagnifyingGlass } from '@phosphor-icons/react'
-import { useFundInflows, useFundInflowTotals, useDeleteFundInflow, useSubmitFundInflow, useApproveFundInflow } from '../../hooks/useFundInflows'
+import { useFundInflows, useFundInflowTotals, useDeleteFundInflow, useSubmitFundInflow, useApproveFundInflow, useReviewFundInflow } from '../../hooks/useFundInflows'
 import { PageHeader } from '../Common/PageHeader'
 import { StatusBadge } from '../Common/StatusBadge'
 import { EmptyState } from '../Common/EmptyState'
@@ -31,6 +31,7 @@ const FundInflowList = () => {
   const { data: totalAmount } = useFundInflowTotals(yearFilter)
   const { mutate: deleteFI, isPending: deleting } = useDeleteFundInflow()
   const { mutate: submitFI, isPending: submitting } = useSubmitFundInflow()
+  const { mutate: reviewFI } = useReviewFundInflow()
   const { mutate: approveFI } = useApproveFundInflow()
 
   const items: FundInflow[] = Array.isArray(data) ? data : []
@@ -179,7 +180,15 @@ const FundInflowList = () => {
                                 </button>
                               </>
                             )}
-                            {(s === 'pending_review' || s === 'pending_approval') && (
+                            {s === 'pending_review' && (
+                              <button
+                                onClick={() => reviewFI({ id: fi.id })}
+                                className="text-xs text-blue-700 hover:underline font-medium"
+                              >
+                                Review
+                              </button>
+                            )}
+                            {s === 'pending_approval' && (
                               <button
                                 onClick={() => approveFI(fi.id)}
                                 className="text-xs text-green-700 hover:underline font-medium"

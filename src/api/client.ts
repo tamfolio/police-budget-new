@@ -134,9 +134,10 @@ apiClient.interceptors.response.use(
     }
 
     // Attach API error message for easy access in catch blocks
+    const responseData = error.response?.data as Record<string, unknown> | undefined
     const apiMessage =
-      (error.response?.data as Record<string, unknown>)?.message ??
-      (error.response?.data as Record<string, unknown>)?.error ??
+      responseData?.message ??
+      (responseData?.error as Record<string, unknown> | undefined)?.message ??
       error.message
 
     ;(error as AxiosError & { apiMessage: unknown }).apiMessage = apiMessage
