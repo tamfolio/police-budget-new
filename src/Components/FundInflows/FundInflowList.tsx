@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Plus, FunnelSimple, MagnifyingGlass } from '@phosphor-icons/react'
-import { useFundInflows, useFundInflowTotals, useDeleteFundInflow, useSubmitFundInflow, useApproveFundInflow, useReviewFundInflow } from '../../hooks/useFundInflows'
+import { useFundInflows, useFundInflowTotals, useDeleteFundInflow, useSubmitFundInflow, useApproveFundInflow, useReviewFundInflow, useRejectFundInflow, useReopenFundInflow } from '../../hooks/useFundInflows'
 import { PageHeader } from '../Common/PageHeader'
 import { StatusBadge } from '../Common/StatusBadge'
 import { EmptyState } from '../Common/EmptyState'
 import { PageLoader } from '../Common/LoadingSpinner'
 import { ConfirmDialog } from '../Common/ConfirmDialog'
+import { Modal } from '../Common/Modal'
 import FundInflowForm from './FundInflowForm'
 import type { FundInflow, FundInflowStatus } from '../../types'
 
@@ -27,12 +28,17 @@ const FundInflowList = () => {
   const [editItem, setEditItem] = useState<FundInflow | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [submitId, setSubmitId] = useState<string | null>(null)
+  const [rejectId, setRejectId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [reopenId, setReopenId] = useState<string | null>(null)
   const { data, isLoading } = useFundInflows({ fiscalYear: yearFilter, status: statusFilter || undefined })
   const { data: totalAmount } = useFundInflowTotals(yearFilter)
   const { mutate: deleteFI, isPending: deleting } = useDeleteFundInflow()
   const { mutate: submitFI, isPending: submitting } = useSubmitFundInflow()
   const { mutate: reviewFI } = useReviewFundInflow()
   const { mutate: approveFI } = useApproveFundInflow()
+  const { mutate: rejectFI, isPending: rejecting } = useRejectFundInflow()
+  const { mutate: reopenFI, isPending: reopening } = useReopenFundInflow()
 
   const items: FundInflow[] = Array.isArray(data) ? data : []
 
@@ -181,23 +187,42 @@ const FundInflowList = () => {
                               </>
                             )}
                             {s === 'pending_review' && (
-                              <button
-                                onClick={() => reviewFI({ id: fi.id })}
-                                className="text-xs text-blue-700 hover:underline font-medium"
-                              >
-                                Review
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => reviewFI({ id: fi.id })}
+                                  className="text-xs text-blue-700 hover:underline font-medium"
+                                >
+                                  Review
+                                </button>
+                                <button
+                                  onClick={() => { setRejectId(fi.id); setRejectReason('') }}
+                                  className="text-xs text-red-500 hover:underline font-medium"
+                                >
+                                  Reject
+                                </button>
+                              </>
                             )}
                             {s === 'pending_approval' && (
-                              <button
-                                onClick={() => approveFI(fi.id)}
-                                className="text-xs text-green-700 hover:underline font-medium"
-                              >
-                                Approve
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => approveFI(fi.id)}
+                                  className="text-xs text-green-700 hover:underline font-medium"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => { setRejectId(fi.id); setRejectReason('') }}
+                                  className="text-xs text-red-500 hover:underline font-medium"
+                                >
+                                  Reject
+                                </button>
+                              </>
                             )}
                             {s === 'rejected' && (
-                              <button className="text-xs text-slate-500 hover:underline font-medium">
+                              <button
+                                onClick={() => setReopenId(fi.id)}
+                                className="text-xs text-slate-600 hover:underline font-medium"
+                              >
                                 Reopen
                               </button>
                             )}
@@ -240,6 +265,54 @@ const FundInflowList = () => {
         variant="primary"
         loading={submitting}
       />
+
+      <ConfirmDialog
+        open={Boolean(reopenId)}
+        onClose={() => setReopenId(null)}
+        onConfirm={() => reopenFI(reopenId!, { onSuccess: () => setReopenId(null) })}
+        title="Reopen fund inflow"
+        message="This will reopen the rejected record so it can be corrected and resubmitted."
+        confirmLabel="Reopen"
+        variant="primary"
+        loading={reopening}
+      />
+
+      <Modal
+        open={Boolean(rejectId)}
+        onClose={() => setRejectId(null)}
+        title="Reject fund inflow"
+        size="sm"
+        footer={
+          <>
+            <button onClick={() => setRejectId(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              Cancel
+            </button>
+            <button
+              onClick={() => rejectFI(
+                { id: rejectId!, payload: { reason: rejectReason } },
+                { onSuccess: () => { setRejectId(null); setRejectReason('') } }
+              )}
+              disabled={rejecting || rejectReason.trim().length < 5}
+              className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+            >
+              {rejecting ? 'Rejecting…' : 'Reject'}
+            </button>
+          </>
+        }
+      >
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            Reason for rejection <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            rows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Provide a reason (min. 5 characters)…"
+            className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+          />
+        </div>
+      </Modal>
     </div>
   )
 }
