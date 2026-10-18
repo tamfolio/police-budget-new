@@ -1,46 +1,31 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { FunnelSimple } from '@phosphor-icons/react'
-import { useAIEReport } from '../../hooks/useAIE'
+import { useAIECodeActuals, useAIEReport } from '../../hooks/useAIE'
 import { PageLoader } from '../Common/LoadingSpinner'
 import { EmptyState } from '../Common/EmptyState'
+import { Modal } from '../Common/Modal'
 
 const YEAR = new Date().getFullYear()
-
-const MONTHS = [
-  'january', 'february', 'march', 'april', 'may', 'june',
-  'july', 'august', 'september', 'october', 'november', 'december',
-]
-
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 const MONTH_LABELS: Record<string, string> = {
-  january: 'Jan', february: 'Feb', march: 'Mar', april: 'Apr',
-  may: 'May', june: 'Jun', july: 'Jul', august: 'Aug',
-  september: 'Sep', october: 'Oct', november: 'Nov', december: 'Dec',
+  jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
+  jul: 'Jul', aug: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dec: 'Dec',
 }
 
-const fmt = (v: unknown) => {
-  const n = Number(v)
-  if (!n && n !== 0) return '—'
-  return `₦${n.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+const fmt = (value: unknown) => {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return '—'
+  return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
-const fmtPct = (v: unknown) => {
-  const n = Number(v)
-  if (isNaN(n)) return '—'
-  return `${n.toFixed(1)}%`
+const monthLabel = (key: string) => {
+  const [month, year] = key.split(' ')
+  return `${MONTH_LABELS[month?.toLowerCase()] ?? month ?? key} ${year ?? ''}`.trim()
 }
 
-// Extract budget/actual from a row for a given month.
-// The API may return nested { january: { budget, actual } } or flat { januaryBudget, januaryActual }.
-const getBudget = (row: Record<string, unknown>, month: string): unknown => {
-  const nested = row[month]
-  if (nested && typeof nested === 'object') return (nested as Record<string, unknown>).budget
-  return row[`${month}Budget`] ?? row[`${month}_budget`]
-}
-
-const getActual = (row: Record<string, unknown>, month: string): unknown => {
-  const nested = row[month]
-  if (nested && typeof nested === 'object') return (nested as Record<string, unknown>).actual
-  return row[`${month}Actual`] ?? row[`${month}_actual`]
+const monthOrder = (key: string) => {
+  const [month, year] = key.toLowerCase().split(' ')
+  return (Number(year) || 0) * 12 + MONTHS.indexOf(month)
 }
 
 interface Props {
@@ -49,151 +34,152 @@ interface Props {
 }
 
 const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
+  const [selectedCode, setSelectedCode] = useState<string | null>(null)
   const { data: rows = [], isLoading } = useAIEReport({ fiscalYear })
+  const { data: actualData, isLoading: actualsLoading } = useAIECodeActuals(selectedCode, fiscalYear)
 
-  // Determine which months actually have data
   const activeMonths = useMemo(() => {
-    if (rows.length === 0) return []
-    const first = rows[0]
-    return MONTHS.filter((m) => {
-      const b = getBudget(first, m)
-      const a = getActual(first, m)
-      return b != null || a != null
+    const keys = new Set<string>()
+    rows.forEach((row) => {
+      const months = row.months
+      if (months && typeof months === 'object') {
+        Object.keys(months as Record<string, unknown>).forEach((key) => keys.add(key))
+      }
     })
+    return [...keys].sort((a, b) => monthOrder(a) - monthOrder(b))
   }, [rows])
 
-  // Grand totals row
-  const totals = useMemo(() => {
-    const t: Record<string, { budget: number; actual: number }> = {}
-    let totalAppropriation = 0
-    for (const row of rows) {
-      totalAppropriation += Number(row.annualAppropriation ?? row.totalAmount ?? 0)
-      for (const m of activeMonths) {
-        if (!t[m]) t[m] = { budget: 0, actual: 0 }
-        t[m].budget += Number(getBudget(row, m) ?? 0)
-        t[m].actual += Number(getActual(row, m) ?? 0)
-      }
-    }
-    return { months: t, annualAppropriation: totalAppropriation }
-  }, [rows, activeMonths])
+  const totals = useMemo(() => ({
+    annualAppropriation: rows.reduce((sum, row) => sum + Number(row.annualAppropriation ?? 0), 0),
+    totalBudget: rows.reduce((sum, row) => sum + Number(row.totalBudget ?? 0), 0),
+    totalActual: rows.reduce((sum, row) => sum + Number(row.totalActual ?? 0), 0),
+    monthlyBudgets: activeMonths.reduce<Record<string, number>>((acc, key) => {
+      acc[key] = rows.reduce((sum, row) => {
+        const months = row.months as Record<string, { budget?: number }> | undefined
+        return sum + Number(months?.[key]?.budget ?? 0)
+      }, 0)
+      return acc
+    }, {}),
+  }), [rows, activeMonths])
+
+  const actualDetails = Array.isArray(actualData?.details) ? actualData.details as Record<string, unknown>[] : []
+  const proposalActuals = Array.isArray(actualData?.proposalActuals) ? actualData.proposalActuals as Record<string, unknown>[] : []
 
   return (
     <div>
-      {/* Filter bar */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-5 flex items-center gap-3">
         <FunnelSimple size={15} className="text-slate-400" />
         <select
           value={fiscalYear}
-          onChange={(e) => onYearChange(Number(e.target.value))}
+          onChange={(event) => onYearChange(Number(event.target.value))}
           className="text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
         >
-          {[YEAR, YEAR - 1, YEAR - 2].map((y) => <option key={y} value={y}>{y}</option>)}
+          {[YEAR, YEAR - 1, YEAR - 2].map((year) => <option key={year} value={year}>{year}</option>)}
         </select>
-        <span className="text-sm text-slate-400">Showing budget vs actual by month for FY {fiscalYear}</span>
+        <span className="text-sm text-slate-400">Monthly budget and accumulated AIE actuals for FY {fiscalYear}</span>
       </div>
 
-      {/* Report table */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        {isLoading ? (
-          <PageLoader />
-        ) : rows.length === 0 ? (
-          <EmptyState
-            title="No report data"
-            description="There is no AIE report data for this fiscal year."
-          />
+        {isLoading ? <PageLoader /> : rows.length === 0 ? (
+          <EmptyState title="No report data" description="There is no AIE report data for this fiscal year." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
-                {/* Month group header */}
                 <tr className="bg-slate-800 text-white">
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap" rowSpan={2}>Sub-Item Code</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold tracking-wide" rowSpan={2} style={{ minWidth: 160 }}>Description</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold tracking-wide whitespace-nowrap" rowSpan={2}>Annual Appropriation</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold tracking-wide whitespace-nowrap" rowSpan={2}>% Allocated</th>
-                  {activeMonths.map((m) => (
-                    <th key={m} colSpan={2} className="px-3 py-2.5 text-center text-xs font-semibold tracking-wide border-l border-slate-600">
-                      {MONTH_LABELS[m] ?? m}
+                  <th className="px-4 py-3 text-left text-xs font-semibold whitespace-nowrap">Budget Code</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold" style={{ minWidth: 180 }}>Expenditure Item</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold whitespace-nowrap">Annual Appropriation</th>
+                  {activeMonths.map((month) => (
+                    <th key={month} className="px-3 py-3 text-right text-xs font-semibold border-l border-slate-600 whitespace-nowrap">
+                      {monthLabel(month)} Budget
                     </th>
                   ))}
-                </tr>
-                <tr className="bg-slate-700 text-slate-200">
-                  {activeMonths.map((m) => (
-                    <>
-                      <th key={`${m}-budget`} className="px-3 py-2 text-right text-xs font-medium tracking-wide border-l border-slate-600 whitespace-nowrap">Budget</th>
-                      <th key={`${m}-actual`} className="px-3 py-2 text-right text-xs font-medium tracking-wide whitespace-nowrap">Actual</th>
-                    </>
-                  ))}
+                  <th className="px-4 py-3 text-right text-xs font-semibold border-l border-slate-600 whitespace-nowrap">Total AIE Actuals</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, i) => {
-                  const code = String(row.subItemCode ?? row.subItemCodeId ?? row.code ?? i)
-                  const label = String(row.subItemLabel ?? row.description ?? row.label ?? '')
-                  const appropriation = row.annualAppropriation ?? row.totalAmount ?? row.appropriation
-                  const pctAllocated = row.percentAllocated ?? row.pctAllocated ?? row.allocated
-
+                {rows.map((row, index) => {
+                  const code = String(row.code ?? '')
+                  const months = (row.months ?? {}) as Record<string, { budget?: number }>
                   return (
-                    <tr key={code} className={`border-t border-slate-100 hover:bg-blue-50 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                    <tr key={code || index} className={`border-t border-slate-100 hover:bg-blue-50 ${index % 2 ? 'bg-slate-50/40' : 'bg-white'}`}>
                       <td className="px-4 py-2.5 font-mono text-xs text-slate-600 whitespace-nowrap">{code}</td>
-                      <td className="px-4 py-2.5 text-slate-700 text-xs" style={{ maxWidth: 200 }}>{label}</td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-slate-800 whitespace-nowrap text-xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {fmt(appropriation)}
+                      <td className="px-4 py-2.5 text-slate-700 text-xs">{String(row.expenditureItem ?? '')}</td>
+                      <td className="px-4 py-2.5 text-right text-xs text-slate-700 whitespace-nowrap">{fmt(row.annualAppropriation)}</td>
+                      {activeMonths.map((month) => (
+                        <td key={`${code}-${month}`} className="px-3 py-2.5 text-right text-xs text-slate-600 border-l border-slate-100 whitespace-nowrap">
+                          {fmt(months[month]?.budget ?? 0)}
+                        </td>
+                      ))}
+                      <td className="px-4 py-2.5 text-right text-xs border-l border-slate-100 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCode(code)}
+                          aria-label={`Show AIE actual details for ${code}`}
+                          className="font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                        >
+                          {fmt(row.totalActual)}
+                        </button>
                       </td>
-                      <td className="px-4 py-2.5 text-right text-xs whitespace-nowrap">
-                        <span className={`font-medium ${Number(pctAllocated) > 100 ? 'text-red-600' : Number(pctAllocated) >= 80 ? 'text-green-700' : 'text-slate-600'}`}>
-                          {fmtPct(pctAllocated)}
-                        </span>
-                      </td>
-                      {activeMonths.map((m) => {
-                        const budget = getBudget(row, m)
-                        const actual = getActual(row, m)
-                        const variance = Number(actual ?? 0) - Number(budget ?? 0)
-                        return (
-                          <>
-                            <td key={`${code}-${m}-b`} className="px-3 py-2.5 text-right text-xs text-slate-600 border-l border-slate-100 whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                              {budget != null ? fmt(budget) : <span className="text-slate-300">—</span>}
-                            </td>
-                            <td key={`${code}-${m}-a`} className="px-3 py-2.5 text-right text-xs whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                              {actual != null ? (
-                                <span className={variance < 0 ? 'text-red-600 font-medium' : 'text-slate-800'}>
-                                  {fmt(actual)}
-                                </span>
-                              ) : (
-                                <span className="text-slate-300">—</span>
-                              )}
-                            </td>
-                          </>
-                        )
-                      })}
                     </tr>
                   )
                 })}
               </tbody>
-              {/* Totals footer */}
               <tfoot>
                 <tr className="border-t-2 border-slate-300 bg-slate-100 font-semibold">
-                  <td className="px-4 py-3 text-xs text-slate-700 whitespace-nowrap" colSpan={2}>TOTAL</td>
-                  <td className="px-4 py-3 text-right text-xs text-slate-800 whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {fmt(totals.annualAppropriation)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-xs text-slate-500">—</td>
-                  {activeMonths.map((m) => (
-                    <>
-                      <td key={`tot-${m}-b`} className="px-3 py-3 text-right text-xs text-slate-800 border-l border-slate-200 whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {fmt(totals.months[m]?.budget)}
-                      </td>
-                      <td key={`tot-${m}-a`} className="px-3 py-3 text-right text-xs text-slate-800 whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {fmt(totals.months[m]?.actual)}
-                      </td>
-                    </>
+                  <td className="px-4 py-3 text-xs text-slate-700" colSpan={2}>TOTAL</td>
+                  <td className="px-4 py-3 text-right text-xs text-slate-800 whitespace-nowrap">{fmt(totals.annualAppropriation)}</td>
+                  {activeMonths.map((month) => (
+                    <td key={`total-${month}`} className="px-3 py-3 text-right text-xs text-slate-800 border-l border-slate-200 whitespace-nowrap">
+                      {fmt(totals.monthlyBudgets[month])}
+                    </td>
                   ))}
+                  <td className="px-4 py-3 text-right text-xs text-slate-800 border-l border-slate-200 whitespace-nowrap">{fmt(totals.totalActual)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
         )}
       </div>
+
+      <Modal open={Boolean(selectedCode)} onClose={() => setSelectedCode(null)} title={`AIE actual details · ${selectedCode ?? ''}`} size="xl">
+        {actualsLoading ? <PageLoader /> : (
+          <div className="space-y-6">
+            <section>
+              <h3 className="text-sm font-semibold text-slate-800 mb-3">Workbook release details</h3>
+              {actualDetails.length === 0 ? <p className="text-sm text-slate-500">No workbook release rows for this code.</p> : (
+                <div className="overflow-x-auto border border-slate-100 rounded-lg">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-50 text-slate-500"><tr>
+                      {['Month', 'Release reference', 'Date', 'Source tab', 'Description', 'Remark', 'Amount'].map((label) => <th key={label} className="px-3 py-2 text-left font-semibold whitespace-nowrap">{label}</th>)}
+                    </tr></thead>
+                    <tbody>{actualDetails.map((detail, index) => {
+                      const release = (detail.release ?? {}) as Record<string, unknown>
+                      return <tr key={String(detail.id ?? index)} className="border-t border-slate-100">
+                        <td className="px-3 py-2 whitespace-nowrap">{release.month ? monthLabel(`${MONTHS[Number(release.month) - 1]} ${fiscalYear}`) : '—'}</td>
+                        <td className="px-3 py-2 font-mono whitespace-nowrap">{String(release.releaseRef ?? '—')}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{String(release.releaseDate ?? '—')}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{String(detail.sourceSheetName ?? '—')}</td>
+                        <td className="px-3 py-2">{String(detail.expenditureDetail ?? '—')}</td>
+                        <td className="px-3 py-2">{String(detail.remark ?? '—')}</td>
+                        <td className="px-3 py-2 text-right font-medium whitespace-nowrap">{fmt(detail.amount)}</td>
+                      </tr>
+                    })}</tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+            {proposalActuals.length > 0 && <section>
+              <h3 className="text-sm font-semibold text-slate-800 mb-3">Approved proposal actuals</h3>
+              <div className="space-y-2">{proposalActuals.map((proposal, index) => <div key={String(proposal.proposalId ?? index)} className="flex justify-between gap-4 border-b border-slate-100 pb-2 text-sm">
+                <span className="text-slate-600">{MONTH_LABELS[MONTHS[Number(proposal.month) - 1]] ?? 'Month'} · {String(proposal.proposalId)}</span>
+                <span className="font-medium text-slate-800">{fmt(proposal.amount)}</span>
+              </div>)}</div>
+            </section>}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

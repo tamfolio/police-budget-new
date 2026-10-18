@@ -75,8 +75,10 @@ export const AIE = {
   REOPEN: (id: string) => `/aies/${id}/reopen`,
   IMPORTS: '/aies/imports',
   IMPORTS_REPLACE: '/aies/imports/replace',
+  IMPORTS_LIST: '/aies/imports',
   GET_IMPORT: (importId: string) => `/aies/imports/${importId}`,
   APPROVE_IMPORT: (importId: string) => `/aies/imports/${importId}/approve`,
+  REJECT_IMPORT: (importId: string) => `/aies/imports/${importId}/reject`,
   BUDGET_CODE_SUMMARY: (code: string) => `/aies/budget-codes/${code}/summary`,
   BUDGET_CODE_ACTUALS: (code: string) => `/aies/budget-codes/${code}/actuals`,
 }

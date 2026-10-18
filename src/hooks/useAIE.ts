@@ -128,10 +128,21 @@ export const useAIEReport = (params?: { fiscalYear?: number; budgetCode?: string
     queryFn: () => aieService.getReport(params),
     select: (res) => {
       const d = res.data as Record<string, unknown>
-      const inner = d?.data ?? d
-      return (Array.isArray(inner) ? inner : []) as Record<string, unknown>[]
+      const inner = (d?.data ?? d) as Record<string, unknown>
+      return (Array.isArray(inner?.rows) ? inner.rows : []) as Record<string, unknown>[]
     },
     enabled: Boolean(params?.fiscalYear),
+  })
+
+export const useAIECodeActuals = (code: string | null, fiscalYear: number) =>
+  useQuery({
+    queryKey: [QK, 'code-actuals', code, fiscalYear],
+    queryFn: () => aieService.getCodeActuals(code!, fiscalYear),
+    select: (res) => {
+      const d = res.data as Record<string, unknown>
+      return (d?.data ?? d) as Record<string, unknown>
+    },
+    enabled: Boolean(code && fiscalYear),
   })
 
 export const useImportAIE = () => {
@@ -139,15 +150,52 @@ export const useImportAIE = () => {
   return useMutation({
     mutationFn: (fd: FormData) => aieService.importAIE(fd),
     onError: (e: unknown) => toast.error(getErrorMessage(e)),
-    onSuccess: () => invalidate(qc),
+    onSuccess: (res) => {
+      const d = res.data as Record<string, unknown>
+      const result = (d?.data ?? d) as Record<string, unknown>
+      toast.success(result.status === 'PENDING_APPROVAL' ? 'Import submitted for director review' : 'AIE import applied')
+      invalidate(qc)
+    },
   })
 }
+
+export const useReplaceAIE = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (fd: FormData) => aieService.replaceAIE(fd),
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+    onSuccess: (res) => {
+      const d = res.data as Record<string, unknown>
+      const result = (d?.data ?? d) as Record<string, unknown>
+      toast.success(result.status === 'PENDING_APPROVAL' ? 'Replacement submitted for director review' : 'AIE data replaced')
+      invalidate(qc)
+    },
+  })
+}
+
+export const useAIEWorkbookImports = (enabled: boolean) =>
+  useQuery({
+    queryKey: [QK, 'workbook-imports', 'PENDING_APPROVAL'],
+    queryFn: () => aieService.getImports('PENDING_APPROVAL'),
+    select: (res) => normalizeList<Record<string, unknown>>(res.data),
+    enabled,
+    refetchInterval: enabled ? 30_000 : false,
+  })
 
 export const useApproveAIEImport = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (importId: string) => aieService.approveImport(importId),
     onSuccess: () => { toast.success('Import approved — AIEs loaded'); invalidate(qc) },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  })
+}
+
+export const useRejectAIEImport = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ importId, reason }: { importId: string; reason: string }) => aieService.rejectImport(importId, reason),
+    onSuccess: () => { toast.success('Import rejected'); invalidate(qc) },
     onError: (e: unknown) => toast.error(getErrorMessage(e)),
   })
 }

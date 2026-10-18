@@ -40,6 +40,13 @@ export interface AIEReportParams {
   budgetCode?: string
 }
 
+export interface AIEImportPayload {
+  file: File;
+  fiscalYear: number;
+  action: 'append' | 'correction' | 'replace';
+  confirmReplacement?: boolean;
+}
+
 export const aieService = {
   getAll: (params?: GetAIEsParams) => apiClient.get(AIE.LIST, { params }),
   getById: (id: string) => apiClient.get(AIE.GET(id)),
@@ -58,9 +65,13 @@ export const aieService = {
   reopen: (id: string) => apiClient.patch(AIE.REOPEN(id)),
   seed: () => apiClient.post(AIE.SEED),
   importAIE: (formData: FormData) =>
-    apiClient.post(AIE.IMPORTS, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    apiClient.post(AIE.IMPORTS, formData),
   replaceAIE: (formData: FormData) =>
-    apiClient.post(AIE.IMPORTS_REPLACE, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    apiClient.post(AIE.IMPORTS_REPLACE, formData),
   getImport: (importId: string) => apiClient.get(AIE.GET_IMPORT(importId)),
+  getImports: (status?: string) => apiClient.get(AIE.IMPORTS_LIST, { params: status ? { status } : undefined }),
   approveImport: (importId: string) => apiClient.post(AIE.APPROVE_IMPORT(importId)),
+  rejectImport: (importId: string, reason: string) => apiClient.post(AIE.REJECT_IMPORT(importId), { reason }),
+  getCodeActuals: (code: string, fiscalYear: number) =>
+    apiClient.get(AIE.BUDGET_CODE_ACTUALS(encodeURIComponent(code)), { params: { fiscalYear } }),
 }
