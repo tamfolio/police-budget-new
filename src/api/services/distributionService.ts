@@ -16,6 +16,13 @@ export const distributionService = {
   getAll: (params: GetDistributionsParams) => apiClient.get(DISTRIBUTIONS.LIST, { params }),
   getTemplate: (view: DistributionView, periodId?: string) =>
     apiClient.get(DISTRIBUTIONS.TEMPLATE, { params: { view, ...(periodId ? { periodId } : {}) } }),
+  getCsvTemplate: (view: DistributionView, periodId: string) =>
+    apiClient.get(DISTRIBUTIONS.TEMPLATE_CSV, { params: { view, periodId }, responseType: 'blob' }),
+  importCsv: (view: DistributionView, formData: FormData) =>
+    apiClient.post(DISTRIBUTIONS.IMPORT_CSV, formData, {
+      params: { view },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   // reference endpoint does NOT take a view param
   getReference: () => apiClient.get(DISTRIBUTIONS.REFERENCE),
   create: (view: DistributionView, payload: Record<string, unknown>) =>

@@ -86,6 +86,8 @@ export const DISTRIBUTIONS = {
   LIST: '/distributions',
   CREATE: '/distributions',
   TEMPLATE: '/distributions/template',
+  TEMPLATE_CSV: '/distributions/template.csv',
+  IMPORT_CSV: '/distributions/import',
   REFERENCE: '/distributions/reference',
   SEED: '/distributions/seed-all',
   UPDATE: (periodId: string) => `/distributions/${periodId}`,
