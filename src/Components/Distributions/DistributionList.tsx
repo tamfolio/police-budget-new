@@ -203,7 +203,9 @@ const ZoneSection = ({
                 <th style={{ ...TH, textAlign: 'center', width: 54 }}>S/No</th>
                 <th style={{ ...TH, textAlign: 'left', width: 80 }}>Code</th>
                 <th style={{ ...TH, textAlign: 'left', minWidth: 180 }}>Description</th>
-                {columns.map((col) => <th key={col} style={TH}>{col}</th>)}
+                {columns.length > 1
+                  ? <th colSpan={columns.length} style={{ ...TH, textAlign: 'center' }}>{columns.join('-')}</th>
+                  : columns.map((col) => <th key={col} style={{ ...TH, textAlign: 'center' }}>{col}</th>)}
                 {nCols > 1 && <th style={{ ...TH, color: '#0d2137' }}>Total</th>}
                 <th style={{ ...TH, color: '#0d2137' }}>Provision</th>
               </tr>
@@ -241,7 +243,7 @@ const ZoneSection = ({
                           <td style={{ ...TD, textAlign: 'center', color: '#9ca3af', fontSize: 11 }}>{snoStr}</td>
                           <td style={{ ...TD, textAlign: 'left', fontFamily: 'monospace', fontSize: 11, color: '#6b7280' }}>{item.code}</td>
                           <td style={{ ...TD, textAlign: 'left' }}>{item.desc}</td>
-                          {item.amounts.map((amt, ai) => <td key={ai} style={TD}>{editing ? <MoneyInput value={amt} onChange={(value) => onAmountChange?.(ci, ii, ai, value)} /> : fmt(amt)}</td>)}
+                          {item.amounts.map((amt, ai) => <td key={ai} style={{ ...TD, textAlign: 'center' }}>{editing ? <MoneyInput value={amt} onChange={(value) => onAmountChange?.(ci, ii, ai, value)} /> : fmt(amt)}</td>)}
                           {Array.from({ length: nCols - item.amounts.length }).map((_, pi) => (
                             <td key={`pad-${pi}`} style={{ ...TD, color: '#d1d5db' }}>—</td>
                           ))}
@@ -258,7 +260,7 @@ const ZoneSection = ({
                         Sub-Total
                       </td>
                       {cmdPeriodTotals.map((t, ti) => (
-                        <td key={ti} style={{ ...TD, fontWeight: 700, borderTop: '1px solid #e2e8f0', borderBottom: '2px solid #e5e7eb' }}>{fmt(t)}</td>
+                        <td key={ti} style={{ ...TD, textAlign: 'center', fontWeight: 700, borderTop: '1px solid #e2e8f0', borderBottom: '2px solid #e5e7eb' }}>{fmt(t)}</td>
                       ))}
                       {Array.from({ length: nCols - cmdPeriodTotals.length }).map((_, pi) => (
                         <td key={`tpad-${pi}`} style={{ ...TD, color: '#d1d5db', borderTop: '1px solid #e2e8f0', borderBottom: '2px solid #e5e7eb' }}>—</td>
@@ -276,7 +278,7 @@ const ZoneSection = ({
                   Grand Total — {groupLabel(zoneKey)}
                 </td>
                 {grandColTotals.map((t, ti) => (
-                  <td key={ti} style={{ ...TD, fontWeight: 700, color: '#fff', borderBottom: 'none' }}>{fmt(t)}</td>
+                  <td key={ti} style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#fff', borderBottom: 'none' }}>{fmt(t)}</td>
                 ))}
                 {nCols > 1 && <td style={{ ...TD, fontWeight: 700, color: '#fff', borderBottom: 'none' }}>{fmt(grandTotal)}</td>}
                 <td style={{ ...TD, fontWeight: 700, color: '#93c5fd', borderBottom: 'none' }}>{fmt(grandProvision)}</td>
@@ -331,7 +333,9 @@ const SectionPanel = ({
                 <th style={{ ...TH, textAlign: 'center', width: 54 }}>S/No</th>
                 <th style={{ ...TH, textAlign: 'left', width: 100 }}>Code</th>
                 <th style={{ ...TH, textAlign: 'left', minWidth: 220 }}>Description</th>
-                {columns.map((col) => <th key={col} style={TH}>{col}</th>)}
+                {columns.length > 1
+                  ? <th colSpan={columns.length} style={{ ...TH, textAlign: 'center' }}>{columns.join('-')}</th>
+                  : columns.map((col) => <th key={col} style={{ ...TH, textAlign: 'center' }}>{col}</th>)}
                 {nCols > 1 && <th style={{ ...TH, color: '#0d2137' }}>Total</th>}
                 <th style={{ ...TH, color: '#0d2137' }}>Provision</th>
               </tr>
@@ -356,7 +360,7 @@ const SectionPanel = ({
                     <td style={{ ...TD, textAlign: 'center', color: isHeader ? '#0d2137' : '#9ca3af', fontWeight: isHeader ? 700 : 400, fontSize: 11 }}>{snoStr}</td>
                     <td style={{ ...TD, textAlign: 'left', fontFamily: 'monospace', fontSize: 11, color: '#6b7280' }}>{item.code}</td>
                     <td style={{ ...TD, textAlign: 'left', fontWeight: isHeader ? 600 : 400, color: isHeader ? '#1f2937' : '#374151' }}>{item.desc}</td>
-                    {item.amounts.map((amt, ai) => <td key={ai} style={{ ...TD, fontWeight: isHeader ? 600 : 400 }}>{editing ? <MoneyInput value={amt} onChange={(value) => onAmountChange?.(ii, ai, value)} /> : fmt(amt)}</td>)}
+                    {item.amounts.map((amt, ai) => <td key={ai} style={{ ...TD, textAlign: 'center', fontWeight: isHeader ? 600 : 400 }}>{editing ? <MoneyInput value={amt} onChange={(value) => onAmountChange?.(ii, ai, value)} /> : fmt(amt)}</td>)}
                     {Array.from({ length: nCols - item.amounts.length }).map((_, pi) => (
                       <td key={`pad-${pi}`} style={{ ...TD, color: '#d1d5db' }}>—</td>
                     ))}
@@ -372,7 +376,7 @@ const SectionPanel = ({
                   Section Total
                 </td>
                 {colTotals.map((t, ti) => (
-                  <td key={ti} style={{ ...TD, fontWeight: 700, color: '#fff', borderBottom: 'none' }}>{fmt(t)}</td>
+                  <td key={ti} style={{ ...TD, textAlign: 'center', fontWeight: 700, color: '#fff', borderBottom: 'none' }}>{fmt(t)}</td>
                 ))}
                 {nCols > 1 && <td style={{ ...TD, fontWeight: 700, color: '#fff', borderBottom: 'none' }}>{fmt(sectionTotal)}</td>}
                 <td style={{ ...TD, fontWeight: 700, color: '#93c5fd', borderBottom: 'none' }}>{fmt(section.provisions?.[0] ?? 0)}</td>
@@ -628,7 +632,7 @@ const DistributionList = () => {
                 {/* Toolbar */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                   <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>
-                    {displayedPeriod.columns?.join(' · ')}
+                    {displayedPeriod.columns?.join('-')}
                     {groupKeys.length > 0 && ` · ${groupKeys.length} ${groupKeys.length === 1 ? 'section' : 'sections'}`}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
