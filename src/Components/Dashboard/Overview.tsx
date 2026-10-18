@@ -7,11 +7,10 @@ const YEAR = new Date().getFullYear()
 const IS_DEV = import.meta.env.DEV
 
 const fmt = (val: number) =>
-  val >= 1_000_000_000
-    ? `₦${(val / 1_000_000_000).toFixed(2)}B`
-    : val >= 1_000_000
-    ? `₦${(val / 1_000_000).toFixed(1)}M`
-    : `₦${val.toLocaleString()}`
+  `₦${val.toLocaleString('en-NG', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
 
 const greeting = () => {
   const h = new Date().getHours()

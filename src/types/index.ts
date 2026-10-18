@@ -278,6 +278,7 @@ export interface DistributionCommand {
 // formations / schools view: sections array
 export interface DistributionSection {
   name: string
+  provisions: number[]
   items: DistributionLineItem[]
 }
 
@@ -286,6 +287,7 @@ export interface DistributionSummaryRow {
   name: string
   fromDist: number
   allocation: number
+  difference: number
 }
 
 // Union of all three view shapes returned by GET /distributions?view=...
