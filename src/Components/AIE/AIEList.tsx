@@ -6,8 +6,9 @@ import {
 } from '@phosphor-icons/react'
 import {
   useAIEs, useCreateAIE, useDeleteAIE, useSubmitAIE, useApproveAIE,
-  useRejectAIE, useReopenAIE, useAIETotals, useImportAIE, useApproveAIEImport,
+  useRejectAIE, useReopenAIE, useAIETotals, useImportAIE, useReplaceAIE,
 } from '../../hooks/useAIE'
+import { useCurrentUser } from '../../hooks/useAuth'
 import { PageHeader } from '../Common/PageHeader'
 import { EmptyState } from '../Common/EmptyState'
 import { PageLoader } from '../Common/LoadingSpinner'
@@ -15,6 +16,7 @@ import { Modal } from '../Common/Modal'
 import { ConfirmDialog } from '../Common/ConfirmDialog'
 import { StatusBadge } from '../Common/StatusBadge'
 import AIEReport from './AIEReport'
+import AIEWorkbookImportQueue from './AIEWorkbookImportQueue'
 import type { AIE, AIELineItem } from '../../types'
 
 const YEAR = new Date().getFullYear()
@@ -187,13 +189,15 @@ const AIEList = () => {
   const [importStep, setImportStep] = useState<1 | 2>(1)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importYear, setImportYear] = useState(YEAR)
-  const [importAction, setImportAction] = useState<'append' | 'replace'>('append')
+  const [importAction, setImportAction] = useState<'append' | 'correction' | 'replace'>('append')
   const [importResultId, setImportResultId] = useState<string | null>(null)
+  const [importResultStatus, setImportResultStatus] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Data hooks
   const { data, isLoading } = useAIEs({ fiscalYear: yearFilter, status: statusFilter || undefined })
   const { data: totals } = useAIETotals(yearFilter)
+  const { data: currentUser } = useCurrentUser()
   const { mutate: createAIE, isPending: creating } = useCreateAIE()
   const { mutate: deleteAIE, isPending: deleting } = useDeleteAIE()
   const { mutate: submitAIE, isPending: submitting } = useSubmitAIE()
@@ -201,7 +205,16 @@ const AIEList = () => {
   const { mutate: rejectAIE, isPending: rejecting } = useRejectAIE()
   const { mutate: reopenAIE, isPending: reopening } = useReopenAIE()
   const { mutate: importAIE, isPending: importing } = useImportAIE()
-  const { mutate: approveImport, isPending: approvingImport } = useApproveAIEImport()
+  const { mutate: replaceAIE, isPending: replacing } = useReplaceAIE()
+  const rawRole = typeof currentUser?.role === 'string' ? currentUser.role : currentUser?.role?.code
+  const normalizedRole = String(rawRole ?? '').toUpperCase().replace(/[\s-]+/g, '_')
+  const roleCode = normalizedRole === 'SYSTEM_ADMIN' || normalizedRole === 'SYSTEM_ADMINISTRATOR'
+    ? 'SYSADMIN'
+    : normalizedRole === 'BUDGET_DIRECTOR' ? 'BUDGET_DIR'
+      : normalizedRole === 'BUDGET_OFFICER' ? 'BUDGET_OFF' : normalizedRole
+  const canUploadWorkbook = ['SYSADMIN', 'BUDGET_DIR', 'BUDGET_OFF'].includes(roleCode ?? '')
+  const canReplaceWorkbook = ['SYSADMIN', 'BUDGET_DIR'].includes(roleCode ?? '')
+  const canReviewWorkbook = canReplaceWorkbook
 
   const items: AIE[] = Array.isArray(data) ? data : []
 
@@ -259,28 +272,23 @@ const AIEList = () => {
     const fd = new FormData()
     fd.append('file', importFile)
     fd.append('fiscalYear', String(importYear))
-    fd.append('action', importAction)
-    importAIE(fd, {
-      onSuccess: (res) => {
-        const d = res.data as Record<string, unknown>
-        const inner = (d?.data ?? d) as Record<string, unknown>
-        const id = (inner?.importId ?? inner?.id ?? '') as string
-        setImportResultId(id || null)
-        setImportStep(2)
-      },
-    })
-  }
-
-  const handleApproveImport = () => {
-    if (!importResultId) return
-    approveImport(importResultId, {
-      onSuccess: () => {
-        setImportOpen(false)
-        setImportStep(1)
-        setImportFile(null)
-        setImportResultId(null)
-      },
-    })
+    const showResult = (res: { data: unknown }) => {
+      const d = res.data as Record<string, unknown>
+      const inner = (d?.data ?? d) as Record<string, unknown>
+      setImportResultId(String(inner?.id ?? '') || null)
+      setImportResultStatus(String(inner?.status ?? 'SUBMITTED'))
+      setImportStep(2)
+    }
+    if (importAction === 'replace') {
+      if (!canReplaceWorkbook) return
+      const confirmed = window.confirm(`Replace all imported AIE budgets and actual details for FY ${importYear}? This cannot be undone from this screen.`)
+      if (!confirmed) return
+      fd.append('confirmReplacement', 'true')
+      replaceAIE(fd, { onSuccess: showResult })
+      return
+    }
+    fd.append('action', roleCode === 'BUDGET_OFF' ? 'correction' : importAction)
+    importAIE(fd, { onSuccess: showResult })
   }
 
   const closeImport = () => {
@@ -288,6 +296,7 @@ const AIEList = () => {
     setImportStep(1)
     setImportFile(null)
     setImportResultId(null)
+    setImportResultStatus(null)
   }
 
   // Totals
@@ -305,12 +314,12 @@ const AIEList = () => {
         subtitle="Authority to Incur Expenditure records"
         actions={
           <div className="flex items-center gap-2">
-            <button
+            {canUploadWorkbook && <button
               onClick={() => { setImportOpen(true); setImportStep(1) }}
               className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
             >
-              <UploadSimple size={15} /> Import XLSX
-            </button>
+              <UploadSimple size={15} /> Import AIE File
+            </button>}
             <button
               onClick={() => setCreateOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-semibold rounded-lg hover:bg-blue-800 transition-colors"
@@ -336,6 +345,8 @@ const AIEList = () => {
           <ChartBar size={15} /> Budget Report
         </button>
       </div>
+
+      <AIEWorkbookImportQueue enabled={canReviewWorkbook} />
 
       {view === 'report' ? (
         <AIEReport fiscalYear={yearFilter} onYearChange={setYearFilter} />
@@ -560,28 +571,24 @@ const AIEList = () => {
         </div>
       </Modal>
 
-      {/* ── Import XLSX modal ──────────────────────────────────── */}
+      {/* ── Import AIE file modal ──────────────────────────────── */}
       <Modal
         open={importOpen}
         onClose={closeImport}
-        title="Import AIE from XLSX"
+        title="Import AIE file"
         size="sm"
         footer={
           importStep === 1 ? (
             <>
               <button onClick={closeImport} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-              <button onClick={handleImportSubmit} disabled={!importFile || importing}
+              <button onClick={handleImportSubmit} disabled={!importFile || importing || replacing}
                 className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50">
-                {importing ? 'Uploading…' : 'Upload'}
+                {importing || replacing ? 'Uploading…' : 'Upload'}
               </button>
             </>
           ) : (
             <>
               <button onClick={closeImport} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Close</button>
-              <button onClick={handleApproveImport} disabled={approvingImport}
-                className="px-4 py-2 text-sm font-semibold text-white bg-green-700 rounded-lg hover:bg-green-800 disabled:opacity-50">
-                {approvingImport ? 'Approving…' : 'Approve Import'}
-              </button>
             </>
           )
         }
@@ -589,7 +596,7 @@ const AIEList = () => {
         {importStep === 1 ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">XLSX File <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">XLSX or CSV File <span className="text-red-500">*</span></label>
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
@@ -599,14 +606,14 @@ const AIEList = () => {
                 ) : (
                   <>
                     <UploadSimple size={24} className="mx-auto mb-2 text-slate-300" />
-                    <p className="text-sm text-slate-500">Click to select an XLSX file</p>
+                    <p className="text-sm text-slate-500">Click to select an XLSX or CSV file</p>
                   </>
                 )}
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsx,.csv"
                 className="hidden"
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
               />
@@ -620,24 +627,39 @@ const AIEList = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Import Mode</label>
-                <select value={importAction} onChange={(e) => setImportAction(e.target.value as 'append' | 'replace')} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
-                  <option value="append">Append</option>
-                  <option value="replace">Replace</option>
+                <select value={roleCode === 'BUDGET_OFF' ? 'correction' : importAction} onChange={(e) => setImportAction(e.target.value as 'append' | 'correction' | 'replace')} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                  {roleCode !== 'BUDGET_OFF' && <option value="append">Append</option>}
+                  <option value="correction">Correction</option>
+                  {canReplaceWorkbook && <option value="replace">Replace fiscal year</option>}
                 </select>
               </div>
             </div>
-            <p className="text-xs text-slate-400">Append adds new records; Replace clears existing AIEs for the selected year first.</p>
+            <p className="text-xs text-slate-500">
+              Append adds new code/month budget rows and release references. Correction updates matching existing rows and may require director review. Replace overwrites imported AIE data for the fiscal year.
+            </p>
+            <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
+              <p className="font-semibold">CSV columns</p>
+              <p>RecordType, BudgetCode, Month, Amount, ReleaseRef, ReleaseDate, Description, Remark, SourceTab, FiscalYear</p>
+              <p>Use BUDGET rows for monthly budgets and ACTUAL rows for releases. Actual rows require a month and release reference.</p>
+              <a href="/AIE_Upload_Template.xlsx" download className="inline-block pt-1 font-semibold text-blue-700 hover:underline">Download the XLSX template</a>
+              <span className="px-2 text-slate-300">|</span>
+              <a href="/AIE_Upload_Template.csv" download className="font-semibold text-blue-700 hover:underline">Download the CSV template</a>
+            </div>
           </div>
         ) : (
           <div className="text-center py-4">
             <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
               <Check size={24} className="text-green-600" weight="bold" />
             </div>
-            <p className="font-semibold text-slate-800 mb-1">File uploaded successfully</p>
+            <p className="font-semibold text-slate-800 mb-1">{importResultStatus === 'PENDING_APPROVAL' ? 'Submitted for director review' : 'AIE file processed'}</p>
             {importResultId && (
               <p className="text-xs text-slate-400 font-mono mb-3">Import ID: {importResultId}</p>
             )}
-            <p className="text-sm text-slate-500">Click "Approve Import" to commit the AIEs from this file into the system.</p>
+            <p className="text-sm text-slate-500">
+              {importResultStatus === 'PENDING_APPROVAL'
+                ? 'The import is waiting in the AIE workbook review queue. An authorized director or system admin must approve or reject it.'
+                : 'The import has been applied. Check the AIE Budget Report to confirm monthly budgets and accumulated actuals.'}
+            </p>
           </div>
         )}
       </Modal>
