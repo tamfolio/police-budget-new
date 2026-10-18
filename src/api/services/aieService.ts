@@ -65,9 +65,13 @@ export const aieService = {
   reopen: (id: string) => apiClient.patch(AIE.REOPEN(id)),
   seed: () => apiClient.post(AIE.SEED),
   importAIE: (formData: FormData) =>
-    apiClient.post(AIE.IMPORTS, formData),
+    apiClient.post(AIE.IMPORTS, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   replaceAIE: (formData: FormData) =>
-    apiClient.post(AIE.IMPORTS_REPLACE, formData),
+    apiClient.post(AIE.IMPORTS_REPLACE, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   getImport: (importId: string) => apiClient.get(AIE.GET_IMPORT(importId)),
   getImports: (status?: string) => apiClient.get(AIE.IMPORTS_LIST, { params: status ? { status } : undefined }),
   approveImport: (importId: string) => apiClient.post(AIE.APPROVE_IMPORT(importId)),
