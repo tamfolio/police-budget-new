@@ -402,8 +402,8 @@ export interface BudgetVsActualResult {
   budget: BudgetVsActualSide
   actual: BudgetVsActualSide
   variance: number
-  variancePercentage: number
-  utilizationRate: number
+  variancePercentage: number | null
+  utilizationRate: number | null
 }
 
 export interface ZoneComparisonSide {

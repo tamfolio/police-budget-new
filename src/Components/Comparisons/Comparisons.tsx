@@ -156,11 +156,12 @@ const Comparisons = () => {
                 <div className="p-3.5 bg-slate-50 rounded-lg text-sm text-slate-600">
                   Variance:{' '}
                   <span className={`font-semibold ${bvaData.variance >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {bvaData.variance >= 0 ? '+' : ''}{fmt(bvaData.variance)} ({bvaData.variancePercentage >= 0 ? '+' : ''}{bvaData.variancePercentage.toFixed(1)}%)
+                    {bvaData.variance >= 0 ? '+' : ''}{fmt(bvaData.variance)}
+                    {bvaData.variancePercentage != null && ` (${bvaData.variancePercentage >= 0 ? '+' : ''}${bvaData.variancePercentage.toFixed(1)}%)`}
                   </span>
                 </div>
                 <div className="p-3.5 bg-slate-50 rounded-lg text-sm text-slate-600">
-                  Utilization rate: <span className="font-semibold text-slate-800">{bvaData.utilizationRate.toFixed(1)}%</span>
+                  Utilization rate: <span className="font-semibold text-slate-800">{bvaData.utilizationRate != null ? `${bvaData.utilizationRate.toFixed(1)}%` : '—'}</span>
                 </div>
               </div>
             </div>
