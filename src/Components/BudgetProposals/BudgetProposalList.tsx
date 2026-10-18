@@ -37,7 +37,7 @@ const BudgetProposalList = () => {
         subtitle="Manage budget proposals for AIE line items"
         actions={
           <button onClick={() => setFormOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-semibold rounded-lg hover:bg-blue-800 transition-colors">
-            <Plus size={16} weight="bold" /> New Proposal
+            <Plus size={16} weight="bold" /> New AIE Proposal
           </button>
         }
       />

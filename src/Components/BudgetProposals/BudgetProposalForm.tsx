@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Modal } from '../Common/Modal'
 import { useCreateBudgetProposal } from '../../hooks/useBudgetProposals'
-import { useAIEs, useAIELineItems } from '../../hooks/useAIE'
+import { useAIEs, useAIELineItemsMulti } from '../../hooks/useAIE'
 import { useDepartments } from '../../hooks/useDepartments'
 import type { Department, AIE, AIELineItem } from '../../types'
 
@@ -12,16 +12,23 @@ interface Props {
   onClose: () => void
 }
 
+// A line item tagged with the AIE it came from, so items from different
+// AIEs can be merged into one list without id collisions.
+interface TaggedLineItem extends AIELineItem {
+  aieId: string
+  aieNo: string
+}
+
 const fmt = (v: number) =>
   `₦${v.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const BudgetProposalForm = ({ open, onClose }: Props) => {
   const [fiscalYear, setFiscalYear] = useState(YEAR)
   const [departmentId, setDepartmentId] = useState('')
-  const [selectedAieId, setSelectedAieId] = useState('')
+  const [selectedAieIds, setSelectedAieIds] = useState<string[]>([])
   const [justification, setJustification] = useState('')
   const [notes, setNotes] = useState('')
-  // lineItemId → proposed amount string; blank = skip on submit
+  // "aieId:lineItemId" → proposed amount string; blank = skip on submit
   const [amounts, setAmounts] = useState<Record<string, string>>({})
 
   const { data: deptRaw } = useDepartments()
@@ -30,17 +37,26 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
   const { data: aiesRaw } = useAIEs({ fiscalYear })
   const aies: AIE[] = aiesRaw ?? []
 
-  // Fetch full line items for the selected AIE — the detailed endpoint includes subItemId UUID
-  const { data: detailedLineItems, isLoading: lineItemsLoading } = useAIELineItems(selectedAieId)
-  const rawLineItems = Array.isArray(detailedLineItems)
-    ? (detailedLineItems as AIELineItem[])
-    : ((detailedLineItems as Record<string, unknown>)?.items as AIELineItem[] | undefined) ?? []
+  const selectedAies = aies.filter((a) => selectedAieIds.includes(a.id))
+  const aieById = new Map(aies.map((a) => [a.id, a]))
 
-  const selectedAie = aies.find((a) => a.id === selectedAieId) ?? null
-  // Prefer the dedicated endpoint data (richer); fall back to embedded list
-  const lineItems: AIELineItem[] = rawLineItems.length > 0
-    ? rawLineItems
-    : (selectedAie?.lineItems ?? [])
+  // Fetch full line items for each selected AIE — the detailed endpoint includes subItemId UUID.
+  // Query order follows selectedAieIds, so results must be matched up by that same order
+  // (not by `selectedAies`, whose order follows the full `aies` list instead).
+  const lineItemQueries = useAIELineItemsMulti(selectedAieIds)
+  const lineItemsLoading = lineItemQueries.some((q) => q.isLoading)
+
+  const lineItems: TaggedLineItem[] = selectedAieIds.flatMap((id, idx) => {
+    const aie = aieById.get(id)
+    if (!aie) return []
+    const response = lineItemQueries[idx]?.data as { data?: unknown } | undefined
+    const detailed = response?.data
+    const rawLineItems = Array.isArray(detailed)
+      ? (detailed as AIELineItem[])
+      : ((detailed as Record<string, unknown>)?.items as AIELineItem[] | undefined) ?? []
+    const items = rawLineItems.length > 0 ? rawLineItems : (aie.lineItems ?? [])
+    return items.map((li) => ({ ...li, aieId: aie.id, aieNo: aie.aieNo }))
+  })
 
   const { mutate: create, isPending } = useCreateBudgetProposal()
 
@@ -48,35 +64,39 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
     if (open) {
       setFiscalYear(YEAR)
       setDepartmentId('')
-      setSelectedAieId('')
+      setSelectedAieIds([])
       setJustification('')
       setNotes('')
       setAmounts({})
     }
   }, [open])
 
-  // Reset amounts when AIE changes
+  // Reset amounts when the AIE selection changes
   useEffect(() => {
     setAmounts({})
-  }, [selectedAieId])
+  }, [selectedAieIds.join(',')])
 
-  const setAmount = (lineItemId: string, val: string) =>
-    setAmounts((prev) => ({ ...prev, [lineItemId]: val }))
+  const toggleAie = (id: string) =>
+    setSelectedAieIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+
+  const key = (li: TaggedLineItem) => `${li.aieId}:${li.id}`
+  const setAmount = (k: string, val: string) =>
+    setAmounts((prev) => ({ ...prev, [k]: val }))
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     const validItems = lineItems
       .filter((li) => {
-        const v = amounts[li.id]
+        const v = amounts[key(li)]
         return v && Number(v) > 0
       })
       .map((li) => {
         // The detailed line items endpoint may return a subItemId UUID directly
-        const raw = li as AIELineItem & { subItemId?: string }
+        const raw = li as TaggedLineItem & { subItemId?: string }
         return {
           lineItemId: li.id,
           ...(raw.subItemId ? { subItemId: raw.subItemId } : {}),
-          amount: Number(amounts[li.id]),
+          amount: Number(amounts[key(li)]),
         }
       })
 
@@ -92,7 +112,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
   const labelCls = 'block text-sm font-medium text-slate-700 mb-1.5'
 
   const validItemCount = lineItems.filter((li) => {
-    const v = amounts[li.id]
+    const v = amounts[key(li)]
     return v && Number(v) > 0
   }).length
 
@@ -100,7 +120,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
     <Modal
       open={open}
       onClose={onClose}
-      title="New Budget Proposal"
+      title="New AIE Proposal"
       size="lg"
       footer={
         <>
@@ -109,7 +129,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
             Cancel
           </button>
           <button form="bp-form" type="submit"
-            disabled={isPending || !departmentId || !selectedAieId || !justification.trim() || validItemCount === 0}
+            disabled={isPending || !departmentId || selectedAieIds.length === 0 || justification.trim().length < 10 || validItemCount === 0}
             className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {isPending ? 'Creating…' : `Create Proposal${validItemCount > 0 ? ` (${validItemCount} item${validItemCount !== 1 ? 's' : ''})` : ''}`}
           </button>
@@ -121,7 +141,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Fiscal Year</label>
-            <select value={fiscalYear} onChange={(e) => { setFiscalYear(Number(e.target.value)); setSelectedAieId('') }} className={inputCls}>
+            <select value={fiscalYear} onChange={(e) => { setFiscalYear(Number(e.target.value)); setSelectedAieIds([]) }} className={inputCls}>
               {[YEAR, YEAR - 1, YEAR - 2].map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
@@ -136,24 +156,44 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
           </div>
         </div>
 
-        {/* AIE selector */}
+        {/* AIE selector — supports selecting one or several AIEs */}
         <div>
-          <label className={labelCls}>AIE *</label>
-          <select value={selectedAieId} onChange={(e) => setSelectedAieId(e.target.value)} className={inputCls}>
-            <option value="">Select an AIE…</option>
-            {aies.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.aieNo} — {a.recipientUnit ?? 'No unit'} ({(a.lineItems ?? []).length} line items)
-              </option>
-            ))}
-          </select>
-          {aies.length === 0 && (
-            <p className="mt-1 text-xs text-amber-600">No AIEs found for FY {fiscalYear}.</p>
+          <label className={labelCls}>
+            AIE *
+            <span className="ml-2 text-xs font-normal text-slate-400">Select one or more</span>
+          </label>
+          {aies.length === 0 ? (
+            <p className="text-sm text-amber-600 py-3 text-center border border-slate-200 rounded-lg">
+              No AIEs found for FY {fiscalYear}.
+            </p>
+          ) : (
+            <div className="border border-slate-200 rounded-lg max-h-40 overflow-y-auto divide-y divide-slate-100">
+              {aies.map((a) => {
+                const checked = selectedAieIds.includes(a.id)
+                return (
+                  <label
+                    key={a.id}
+                    className={`flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50 ${checked ? 'bg-blue-50/60' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleAie(a.id)}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+                    />
+                    <span className="text-slate-700">
+                      {a.aieNo} — {a.recipientUnit ?? 'No unit'}
+                      <span className="text-slate-400"> ({(a.lineItems ?? []).length} line items)</span>
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
           )}
         </div>
 
-        {/* Line items from selected AIE */}
-        {selectedAie && (
+        {/* Line items from selected AIE(s) */}
+        {selectedAies.length > 0 && (
           <div>
             <label className={labelCls}>
               Line Items
@@ -167,7 +207,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
               </p>
             ) : lineItems.length === 0 ? (
               <p className="text-sm text-slate-400 py-3 text-center border border-slate-200 rounded-lg">
-                This AIE has no line items.
+                Selected AIE(s) have no line items.
               </p>
             ) : (
               <div className="border border-slate-200 rounded-lg overflow-hidden">
@@ -178,12 +218,20 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
                 </div>
                 <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto">
                   {lineItems.map((li) => (
-                    <div key={li.id} className="grid grid-cols-[1fr_140px_150px] items-center px-3 py-2.5 gap-3 hover:bg-slate-50">
+                    <div key={key(li)} className="grid grid-cols-[1fr_140px_150px] items-center px-3 py-2.5 gap-3 hover:bg-slate-50">
                       <div>
-                        <p className="text-sm text-slate-700 font-medium">{li.subItemLabel || li.subItemCodeId}</p>
-                        {li.fulfillingProposal && (
-                          <p className="text-xs text-amber-600 mt-0.5">Already has a proposal</p>
-                        )}
+                        <p className="text-sm text-slate-700 font-medium">
+                          <span className="font-mono text-xs text-slate-400 mr-1.5">{li.subItemCodeId}</span>
+                          {li.subItemLabel}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {selectedAies.length > 1 && (
+                            <p className="text-xs text-slate-400">{li.aieNo}</p>
+                          )}
+                          {li.fulfillingProposal && (
+                            <p className="text-xs text-amber-600">Already has a proposal</p>
+                          )}
+                        </div>
                       </div>
                       <p className="text-sm text-slate-500 text-right" style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {fmt(li.budgetAmount ?? 0)}
@@ -192,8 +240,8 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
                         type="number"
                         min="0.01"
                         step="0.01"
-                        value={amounts[li.id] ?? ''}
-                        onChange={(e) => setAmount(li.id, e.target.value)}
+                        value={amounts[key(li)] ?? ''}
+                        onChange={(e) => setAmount(key(li), e.target.value)}
                         placeholder="0.00"
                         className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 text-right"
                         style={{ fontVariantNumeric: 'tabular-nums' }}
@@ -209,14 +257,22 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
 
         {/* Justification */}
         <div>
-          <label className={labelCls}>Justification *</label>
+          <label className={labelCls}>
+            Justification *
+            <span className="ml-2 text-xs font-normal text-slate-400">Minimum 10 characters</span>
+          </label>
           <textarea
-            required rows={3}
+            required rows={3} minLength={10}
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
             placeholder="Provide the justification for this budget proposal…"
             className={`${inputCls} resize-none`}
           />
+          {justification.trim().length > 0 && justification.trim().length < 10 && (
+            <p className="mt-1 text-xs text-amber-600">
+              {10 - justification.trim().length} more character{10 - justification.trim().length !== 1 ? 's' : ''} needed
+            </p>
+          )}
         </div>
 
         {/* Notes */}

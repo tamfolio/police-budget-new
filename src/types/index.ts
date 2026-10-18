@@ -375,12 +375,47 @@ export type ReportView = 'monthly-release' | 'line-item' | 'distribution' | 'aie
 
 // ─── Comparisons ─────────────────────────────────────────────────────────────
 
-export interface ZoneComparisonEntry {
-  zone: string
-  formation?: string
-  periodA?: number
-  periodB?: number
-  difference?: number
+export interface MonthOverMonthSide {
+  label: string
+  fiscalYear: number
+  month: number
+  totalAmount: number
+  count: number
+}
+
+export interface MonthOverMonthResult {
+  current: MonthOverMonthSide
+  previous: MonthOverMonthSide
+  change: number
+  percentageChange: number | null
+}
+
+export interface BudgetVsActualSide {
+  totalAmount: number
+  count: number
+}
+
+export interface BudgetVsActualResult {
+  fiscalYear: number
+  budget: BudgetVsActualSide
+  actual: BudgetVsActualSide
+  variance: number
+  variancePercentage: number
+  utilizationRate: number
+}
+
+export interface ZoneComparisonSide {
+  zoneId: string
+  zoneName: string
+  totalAmount: number
+  itemCount: number
+}
+
+export interface ZoneComparisonResult {
+  periodId: string
+  periodLabel: string
+  zoneA: ZoneComparisonSide
+  zoneB: ZoneComparisonSide
 }
 
 export interface MonthOverMonthEntry {
@@ -496,16 +531,27 @@ export interface GetCapitalBudgetItemsParams {
   limit?: number
 }
 
-export interface CapitalBudgetPreviewRow {
+export interface CapitalBudgetPreviewValidRow {
+  fiscalYear: number
+  title: string
+  entity: string
+  ergCode: string
+  description: string
+  type?: CapitalBudgetItemType
+  amountNgn?: number
+  page?: number
+  currency: string
+}
+
+export interface CapitalBudgetPreviewInvalidRow {
   rowNumber: number
-  data: Record<string, unknown>
-  valid: boolean
-  errors?: string[]
+  raw: Record<string, unknown>
+  errors: string[]
 }
 
 export interface CapitalBudgetImportPreview {
-  valid: CapitalBudgetPreviewRow[]
-  invalid: CapitalBudgetPreviewRow[]
+  validRows: CapitalBudgetPreviewValidRow[]
+  invalidRows: CapitalBudgetPreviewInvalidRow[]
   totalRows: number
   validCount: number
   invalidCount: number

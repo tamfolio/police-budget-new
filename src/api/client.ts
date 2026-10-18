@@ -1,5 +1,10 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { API_CONFIG } from '../config/api.config'
+import { AUTH } from './endpoints'
+
+// 401s from these endpoints mean "bad credentials", not "expired session" —
+// they must never trigger the refresh-token flow or redirect to /login.
+const AUTH_ENDPOINTS: string[] = [AUTH.LOGIN, AUTH.REFRESH]
 
 interface RetryableRequest extends InternalAxiosRequestConfig {
   _retry?: boolean
@@ -85,7 +90,9 @@ apiClient.interceptors.response.use(
       })
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((url) => originalRequest?.url?.includes(url))
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       const refreshToken = localStorage.getItem('refreshToken')
 
       if (!refreshToken) {

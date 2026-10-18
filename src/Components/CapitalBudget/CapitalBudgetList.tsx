@@ -43,7 +43,7 @@ const AddRowForm = ({ onClose }: { onClose: () => void }) => {
   const [form, setForm] = useState({
     title: '', entity: '', ergCode: '', description: '',
     fiscalYear: YEAR, type: '' as '' | CapitalBudgetItemType,
-    amountNgn: '', page: '', currency: 'NGN',
+    amountNgn: '', currency: 'NGN',
   })
 
   const set = (k: string, v: string | number) => setForm((f) => ({ ...f, [k]: v }))
@@ -59,7 +59,6 @@ const AddRowForm = ({ onClose }: { onClose: () => void }) => {
       fiscalYear: form.fiscalYear,
       ...(form.type ? { type: form.type as CapitalBudgetItemType } : {}),
       ...(form.amountNgn !== '' ? { amountNgn: Number(form.amountNgn) } : {}),
-      ...(form.page !== '' ? { page: Number(form.page) } : {}),
       currency: form.currency || 'NGN',
     }, { onSuccess: onClose })
   }
@@ -104,10 +103,6 @@ const AddRowForm = ({ onClose }: { onClose: () => void }) => {
           <select value={form.fiscalYear} onChange={(e) => set('fiscalYear', Number(e.target.value))} className={inp}>
             {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-        </div>
-        <div>
-          <label className={lbl}>Source Page</label>
-          <input type="number" min={1} value={form.page} onChange={(e) => set('page', e.target.value)} placeholder="Page in budget document" className={inp} />
         </div>
         <div>
           <label className={lbl}>Currency</label>
@@ -165,7 +160,7 @@ const ImportFlow = ({ onClose }: { onClose: () => void }) => {
   const handleCommit = () => {
     if (!preview) return
     doCommit(
-      { rows: preview.valid.map((r) => r.data), fileName: file?.name },
+      { rows: preview.validRows, fileName: file?.name },
       { onSuccess: () => setStep('done') }
     )
   }
@@ -186,7 +181,7 @@ const ImportFlow = ({ onClose }: { onClose: () => void }) => {
   }
 
   if (step === 'preview' && preview) {
-    const { valid, invalid, totalRows, validCount, invalidCount } = preview
+    const { validRows: valid, invalidRows: invalid, totalRows, validCount, invalidCount } = preview
     return (
       <div className="space-y-4">
         {/* Summary chips */}
@@ -238,13 +233,13 @@ const ImportFlow = ({ onClose }: { onClose: () => void }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {valid.map((r) => (
-                    <tr key={r.rowNumber} className="border-b border-green-50 last:border-0">
-                      <td className="px-3 py-1.5 font-mono text-slate-400">{r.rowNumber}</td>
-                      <td className="px-3 py-1.5 font-mono">{String(r.data.erg_code ?? '—')}</td>
-                      <td className="px-3 py-1.5 text-slate-600 max-w-[200px] truncate">{String(r.data.description ?? '—')}</td>
-                      <td className="px-3 py-1.5">{String(r.data.type ?? '—')}</td>
-                      <td className="px-3 py-1.5 text-right">{r.data.amount_ngn != null ? fmt(Number(r.data.amount_ngn)) : '—'}</td>
+                  {valid.map((r, i) => (
+                    <tr key={i} className="border-b border-green-50 last:border-0">
+                      <td className="px-3 py-1.5 font-mono text-slate-400">{i + 1}</td>
+                      <td className="px-3 py-1.5 font-mono">{r.ergCode || '—'}</td>
+                      <td className="px-3 py-1.5 text-slate-600 max-w-[200px] truncate">{r.description || '—'}</td>
+                      <td className="px-3 py-1.5">{r.type || '—'}</td>
+                      <td className="px-3 py-1.5 text-right">{r.amountNgn != null ? fmt(r.amountNgn) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
