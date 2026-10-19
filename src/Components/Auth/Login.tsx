@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { Eye, EyeSlash, ShieldCheck } from '@phosphor-icons/react'
 import { useLogin } from '../../hooks/useAuth'
 
-const DEV_EMAIL = import.meta.env.VITE_DEV_EMAIL as string | undefined
-const DEV_PASSWORD = import.meta.env.VITE_DEV_PASSWORD as string | undefined
+// Dev-only credentials from .env.local; never read in production builds.
 const IS_DEV = import.meta.env.DEV
+const DEV_EMAIL = IS_DEV ? import.meta.env.VITE_DEV_EMAIL : undefined
+const DEV_PASSWORD = IS_DEV ? import.meta.env.VITE_DEV_PASSWORD : undefined
 
 const Login = () => {
   const [email, setEmail] = useState(IS_DEV && DEV_EMAIL ? DEV_EMAIL : '')
