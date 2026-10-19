@@ -10,9 +10,7 @@ export interface AieCreateLineItem {
 
 export interface CreateAIEPayload {
   fiscalYear: number
-  aieNo: string
   issueDate: string
-  expiresOn?: string
   recipientUnit: string
   lineItems: AieCreateLineItem[]
   notes?: string
