@@ -1,27 +1,11 @@
-import { useState, useEffect } from 'react'
-import { CircleNotch, Plus } from '@phosphor-icons/react'
+import { useState, useEffect, useRef } from 'react'
+import { CircleNotch } from '@phosphor-icons/react'
 import { Modal } from '../Common/Modal'
-import { useCreateDistribution } from '../../hooks/useDistributions'
+import { useCreateDistribution, useDistributions } from '../../hooks/useDistributions'
 import { distributionService, type DistributionView } from '../../api/services/distributionService'
 import toast from 'react-hot-toast'
 import { getErrorMessage } from '../../utils/errorHandlers'
-
-// ── bi-monthly label helper ────────────────────────────────────────────────────
-const MONTHS = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December',
-]
-
-function biMonthLabel(id: string): string {
-  const m = id.match(/^(\d{4})-(\d{2})$/)
-  if (!m) return id || 'Period'
-  const year  = m[1]
-  const month = parseInt(m[2], 10)
-  if (month < 1 || month > 12) return id
-  // snap to odd-start of bi-monthly pair
-  const start = month % 2 === 1 ? month : month - 1
-  return `${MONTHS[start - 1]}-${MONTHS[start]} ${year}`
-}
+import DistributionPeriodPicker, { biMonthLabel } from './DistributionPeriodPicker'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type ZoneKey = 'zone1_6' | 'zone7_12' | 'zone13_17'
@@ -29,6 +13,8 @@ type ZoneKey = 'zone1_6' | 'zone7_12' | 'zone13_17'
 interface ZoneItem  { sno: string | number; desc: string; code: string; amounts: number[] }
 interface ZoneCmd   { name: string; sno: string; provision: number; snos: string[]; provisions: number[]; items: ZoneItem[]; totals: number[] }
 interface ZoneGroup { [key: string]: ZoneCmd[] }
+interface SimpleItem { sno: string | number; desc: string; code: string; amounts: number[] }
+interface SimpleSection { name: string; provisions: number[]; items: SimpleItem[] }
 
 const ZONES: { key: ZoneKey; label: string }[] = [
   { key: 'zone1_6',   label: 'Zone 1 – 6' },
@@ -50,50 +36,74 @@ const AddDistributionPeriodModal = ({ open, onClose, view }: Props) => {
   const [activeZone, setActiveZone] = useState<ZoneKey>('zone1_6')
   const [template,   setTemplate]   = useState<ZoneGroup | null>(null)
   const [data,       setData]       = useState<ZoneGroup>({})
+  const [sections,   setSections]   = useState<SimpleSection[] | null>(null)
   const [columns,    setColumns]    = useState<string[]>([])
   const [fetching,   setFetching]   = useState(false)
+  const templateRequest = useRef(0)
 
   const { mutate: create, isPending } = useCreateDistribution()
+  const { data: existingPeriods = [], isLoading: loadingPeriods } = useDistributions({ view })
 
   const label    = biMonthLabel(periodId)
-  const idValid  = /^\d{4}-\d{2}$/.test(periodId.trim())
-  const hasData  = template !== null
+  const idValid  = /^\d{4}-(0[1-9]|1[0-2])$/.test(periodId.trim())
+  const hasData  = view === 'zone' ? template !== null : sections !== null
 
   // ── load template ─────────────────────────────────────────────────────────
-  const loadTemplate = async () => {
-    if (!idValid) { toast.error('Enter a valid Period ID first (e.g. 2026-03)'); return }
+  const loadTemplate = async (selectedPeriodId: string) => {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(selectedPeriodId)) return
+    const requestId = ++templateRequest.current
     setFetching(true)
     try {
       const res = await distributionService.getTemplate(view)
-      const raw = (res.data?.data ?? res.data) as { data?: ZoneGroup; columns?: string[] }
-      const tplData: ZoneGroup = raw?.data ?? (raw as ZoneGroup)
-      const tplCols: string[]  = raw?.columns ?? [label]
+      const raw = (res.data?.data ?? res.data) as { data?: ZoneGroup; sections?: SimpleSection[]; columns?: string[] }
+      const tplCols: string[]  = [biMonthLabel(selectedPeriodId)]
 
-      // deep-clone so edits don't mutate the original
-      const cloned: ZoneGroup = JSON.parse(JSON.stringify(tplData))
-
-      // set all amounts to 0 for a fresh period
-      for (const zk of Object.keys(cloned)) {
-        for (const cmd of cloned[zk] as ZoneCmd[]) {
-          cmd.items = cmd.items.map(it => ({
-            ...it,
-            amounts: tplCols.map(() => 0),
-          }))
-          cmd.totals     = tplCols.map(() => 0)
-          cmd.provision  = 0
-          cmd.provisions = tplCols.map(() => 0)
+      if (view === 'zone') {
+        if (!raw.data) throw new Error('The Zone distribution template is invalid')
+        const cloned: ZoneGroup = JSON.parse(JSON.stringify(raw.data))
+        for (const zk of Object.keys(cloned)) {
+          for (const cmd of cloned[zk] as ZoneCmd[]) {
+            cmd.items = (cmd.items ?? []).map(it => ({ ...it, amounts: [0] }))
+            cmd.totals = [0]
+            cmd.provision = 0
+            cmd.provisions = [0]
+          }
+        }
+        if (requestId === templateRequest.current) {
+          setTemplate(raw.data)
+          setData(cloned)
+          setSections(null)
+          setColumns(tplCols)
+        }
+      } else {
+        if (!raw.sections) throw new Error(`The ${view} distribution template is invalid`)
+        const cloned: SimpleSection[] = JSON.parse(JSON.stringify(raw.sections))
+        for (const section of cloned) {
+          section.provisions = [0]
+          section.items = (section.items ?? []).map(item => ({ ...item, amounts: [0] }))
+        }
+        if (requestId === templateRequest.current) {
+          setTemplate(null)
+          setData({})
+          setSections(cloned)
+          setColumns(tplCols)
         }
       }
-
-      setTemplate(tplData)
-      setData(cloned)
-      setColumns(tplCols)
     } catch (e) {
-      toast.error(getErrorMessage(e))
+      if (requestId === templateRequest.current) toast.error(getErrorMessage(e))
     } finally {
-      setFetching(false)
+      if (requestId === templateRequest.current) setFetching(false)
     }
   }
+
+  useEffect(() => {
+    if (!open || !idValid) {
+      setTemplate(null); setData({}); setSections(null); setColumns([])
+      return
+    }
+    void loadTemplate(periodId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, periodId, view])
 
   // ── amount change → recalculate totals ────────────────────────────────────
   const setAmount = (zk: ZoneKey, cmdIdx: number, itemIdx: number, colIdx: number, val: string) => {
@@ -118,14 +128,35 @@ const AddDistributionPeriodModal = ({ open, onClose, view }: Props) => {
     })
   }
 
+  const setSectionAmount = (sectionIdx: number, itemIdx: number, val: string) => {
+    setSections(previous => {
+      if (!previous) return previous
+      const next: SimpleSection[] = JSON.parse(JSON.stringify(previous))
+      next[sectionIdx].items[itemIdx].amounts = [Number(val) || 0]
+      return next
+    })
+  }
+
+  const setSectionProvision = (sectionIdx: number, val: string) => {
+    setSections(previous => {
+      if (!previous) return previous
+      const next: SimpleSection[] = JSON.parse(JSON.stringify(previous))
+      next[sectionIdx].provisions = [Number(val) || 0]
+      return next
+    })
+  }
+
   // ── submit ────────────────────────────────────────────────────────────────
   const handleSubmit = () => {
     if (!idValid)  { toast.error('Period ID must be in YYYY-MM format'); return }
-    if (!hasData)  { toast.error('Load the template first'); return }
+    if (!hasData)  { toast.error('The distribution form is still loading'); return }
 
     const col = label
+    const payload = view === 'zone'
+      ? { id: periodId.trim(), columns: [col], data }
+      : { id: periodId.trim(), columns: [col], sections: sections ?? [] }
     create(
-      { view, payload: { id: periodId.trim(), columns: [col], data } },
+      { view, payload },
       { onSuccess: handleClose }
     )
   }
@@ -134,13 +165,14 @@ const AddDistributionPeriodModal = ({ open, onClose, view }: Props) => {
     setPeriodId('')
     setTemplate(null)
     setData({})
+    setSections(null)
     setColumns([])
     setActiveZone('zone1_6')
     onClose()
   }
 
   // reset when closed externally
-  useEffect(() => { if (!open) { setTemplate(null); setData({}); setColumns([]); setPeriodId('') } }, [open])
+  useEffect(() => { if (!open) { setTemplate(null); setData({}); setSections(null); setColumns([]); setPeriodId('') } }, [open])
 
   const inpSm = 'px-2 py-1 text-xs border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-right'
   const provInp = 'px-2 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 text-right w-44'
@@ -169,46 +201,26 @@ const AddDistributionPeriodModal = ({ open, onClose, view }: Props) => {
       <div className="space-y-5">
 
         {/* ── Period ID ── */}
-        <div className="flex items-end gap-3">
-          <div className="flex-1 max-w-xs">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-              Period ID *
-            </label>
-            <input
-              value={periodId}
-              onChange={e => { setPeriodId(e.target.value); setTemplate(null); setData({}) }}
-              placeholder="e.g. 2026-03"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
-              autoFocus
-            />
-            {periodId && (
-              <p className="text-xs text-slate-400 mt-1">
-                Label: <span className="font-medium text-slate-600">{label}</span>
-              </p>
-            )}
-          </div>
-          <button
-            onClick={loadTemplate}
-            disabled={fetching || !idValid}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition-colors"
-          >
-            {fetching
-              ? <><CircleNotch size={14} className="animate-spin" /> Loading…</>
-              : <><Plus size={14} /> Load Template</>}
-          </button>
+        <div className="max-w-sm">
+          <DistributionPeriodPicker
+            periods={existingPeriods}
+            periodId={periodId}
+            onChange={(id) => { setPeriodId(id); setTemplate(null); setData({}); setSections(null); setColumns([]) }}
+            disabled={loadingPeriods}
+          />
         </div>
 
         {/* ── Template not loaded yet ── */}
-        {!hasData && !fetching && (
+        {!hasData && !fetching && periodId && (
           <div className="border border-dashed border-slate-200 rounded-xl py-10 text-center">
-            <p className="text-sm text-slate-400">
-              Enter a period ID and click <span className="font-medium">Load Template</span> to populate the zone structure.
-            </p>
+            <p className="text-sm text-slate-400">Preparing the distribution form…</p>
           </div>
         )}
 
+        {fetching && <div className="py-10 flex items-center justify-center gap-2 text-sm text-slate-500"><CircleNotch size={18} className="animate-spin" />Preparing the distribution form…</div>}
+
         {/* ── Zone tabs + amount editor ── */}
-        {hasData && (
+        {hasData && view === 'zone' && (
           <div>
             <div className="flex gap-0.5 mb-5 border-b border-slate-100">
               {ZONES.map(z => (
@@ -301,6 +313,71 @@ const AddDistributionPeriodModal = ({ open, onClose, view }: Props) => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {hasData && view !== 'zone' && sections && (
+          <div className="space-y-4">
+            {sections.map((section, sectionIdx) => {
+              const subtotal = section.items.reduce((sum, item) => sum + (item.amounts[0] ?? 0), 0)
+              return (
+                <div key={`${section.name}-${sectionIdx}`} className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="bg-slate-50 px-4 py-3 flex flex-wrap items-center gap-3 border-b border-slate-100">
+                    <p className="flex-1 min-w-0 text-xs font-bold text-slate-800 uppercase tracking-wide truncate">{section.name}</p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-slate-500">Provision ₦</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={section.provisions[0] || ''}
+                        onChange={(event) => setSectionProvision(sectionIdx, event.target.value)}
+                        placeholder="0"
+                        className={provInp}
+                      />
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50/40">
+                          <th className="text-left px-3 py-2 font-semibold text-slate-500 w-12">S/No</th>
+                          <th className="text-left px-3 py-2 font-semibold text-slate-500 w-28">Code</th>
+                          <th className="text-left px-3 py-2 font-semibold text-slate-500">Description</th>
+                          <th className="text-right px-3 py-2 font-semibold text-slate-500 w-40">{columns[0]}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {section.items.map((item, itemIdx) => (
+                          <tr key={`${item.code}-${itemIdx}`} className="border-b border-slate-50 hover:bg-slate-50/50">
+                            <td className="px-3 py-2 text-slate-400">{item.sno}</td>
+                            <td className="px-3 py-2 font-mono text-slate-500">{item.code}</td>
+                            <td className="px-3 py-2 text-slate-700">{item.desc}</td>
+                            <td className="px-3 py-1.5 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.amounts[0] || ''}
+                                onChange={(event) => setSectionAmount(sectionIdx, itemIdx, event.target.value)}
+                                placeholder="0"
+                                className={`w-36 ${inpSm}`}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-slate-200 bg-slate-50">
+                          <td colSpan={3} className="px-3 py-2 text-xs font-bold text-slate-600 uppercase tracking-wide">Subtotal</td>
+                          <td className="px-3 py-2 text-right text-xs font-bold text-slate-700 tabular-nums">{fmt(subtotal)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

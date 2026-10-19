@@ -42,6 +42,16 @@ export const useCreateDistribution = () => {
   })
 }
 
+export const useImportDistributionCsv = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ view, formData }: { view: DistributionView; formData: FormData }) =>
+      distributionService.importCsv(view, formData),
+    onSuccess: () => { toast.success('Distribution CSV imported'); invalidate(qc) },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  })
+}
+
 export const useSubmitDistribution = () => {
   const qc = useQueryClient()
   return useMutation({

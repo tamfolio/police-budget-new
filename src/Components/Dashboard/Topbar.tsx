@@ -1,4 +1,4 @@
-import { List, MagnifyingGlass, Bell, CaretDown, User, SignOut } from '@phosphor-icons/react'
+import { List, Bell, CaretDown, User, SignOut } from '@phosphor-icons/react'
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getUserData } from '../../utils/auth'
@@ -45,25 +45,12 @@ const Topbar = ({ onMenuClick }: Props) => {
       gap: 16,
     }}>
 
-      {/* Left: hamburger (mobile) + search */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, maxWidth: 380 }}>
+      {/* Left: hamburger (mobile) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={onMenuClick} className="lg:hidden"
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4, display: 'flex' }}>
           <List size={20} />
         </button>
-
-        {/* Search bar */}
-        <label style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          flex: 1, padding: '8px 14px',
-          background: '#f7f8fa', border: '1px solid #eef0f3',
-          borderRadius: 10, cursor: 'text',
-        }}>
-          <MagnifyingGlass size={15} color="#9ca3af" />
-          <span style={{ fontSize: 13, color: '#9ca3af', userSelect: 'none' }}>
-            Search budgets, reports, entries…
-          </span>
-        </label>
       </div>
 
       {/* Right: notifications + user */}
