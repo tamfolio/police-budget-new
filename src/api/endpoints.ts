@@ -15,6 +15,8 @@ export const ADMIN = {
   GET_USER: (id: string) => `/admin/users/${id}`,
   UPDATE_USER: (id: string) => `/admin/users/${id}`,
   DEACTIVATE_USER: (id: string) => `/admin/users/${id}/deactivate`,
+  SET_USER_STATUS: (id: string) => `/admin/users/${id}/status`,
+  SOFT_DELETE_USER: (id: string) => `/admin/users/${id}`,
 }
 
 // Roles & Permissions
