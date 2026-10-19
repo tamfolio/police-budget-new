@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Plus, MagnifyingGlass, Envelope, Trash, PencilSimple } from '@phosphor-icons/react'
-import { useAdminUsers, useUpdateUserRole, useDeactivateUser, useRoles } from '../../hooks/useAdmin'
+import { Plus, MagnifyingGlass, Envelope, Power, PencilSimple, Trash } from '@phosphor-icons/react'
+import { useAdminUsers, useUpdateUserRole, useSetUserActiveStatus, useSoftDeleteUser, useRoles } from '../../hooks/useAdmin'
 import { PageHeader } from '../Common/PageHeader'
 import { StatusBadge } from '../Common/StatusBadge'
 import { EmptyState } from '../Common/EmptyState'
@@ -8,24 +8,30 @@ import { PageLoader } from '../Common/LoadingSpinner'
 import { Modal } from '../Common/Modal'
 import { ConfirmDialog } from '../Common/ConfirmDialog'
 import { useInviteUsers } from '../../hooks/useAuth'
+import { useCurrentUser } from '../../hooks/useAuth'
 import { getUserDisplayName, getUserRoleName, type User } from '../../types'
 
 const UserList = () => {
   const [search, setSearch] = useState('')
   const [inviteOpen, setInviteOpen] = useState(false)
   const [editUser, setEditUser] = useState<User | null>(null)
-  const [deactivateId, setDeactivateId] = useState<string | null>(null)
+  const [statusTarget, setStatusTarget] = useState<User | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
   const [inviteLines, setInviteLines] = useState('')
   const [inviteRole, setInviteRole] = useState('')
   const [newRole, setNewRole] = useState('')
 
   const { data, isLoading } = useAdminUsers()
+  const { data: currentUser } = useCurrentUser()
   const { data: rolesData } = useRoles()
   const { mutate: updateRole, isPending: updatingRole } = useUpdateUserRole()
-  const { mutate: deactivate, isPending: deactivating } = useDeactivateUser()
+  const { mutate: setUserActiveStatus, isPending: changingStatus } = useSetUserActiveStatus()
+  const { mutate: softDeleteUser, isPending: deletingUser } = useSoftDeleteUser()
   const { mutate: invite, isPending: inviting } = useInviteUsers()
 
   const availableRoles = rolesData?.roles ?? []
+  const currentRole = typeof currentUser?.role === 'string' ? currentUser.role : currentUser?.role?.code
+  const isSuperAdmin = String(currentRole ?? '').toUpperCase().replace(/[\s-]+/g, '_') === 'SYSADMIN'
 
   const users: User[] = data?.users ?? []
 
@@ -138,22 +144,27 @@ const UserList = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button
+                      {isSuperAdmin && currentUser?.id !== u.id && <button
                         onClick={() => { setEditUser(u); setNewRole(getUserRoleName(u)) }}
                         className="text-blue-600 hover:text-blue-800 transition-colors"
                         title="Edit role"
                       >
                         <PencilSimple size={15} />
+                      </button>}
+                      {isSuperAdmin && currentUser?.id !== u.id && <button
+                        onClick={() => setDeleteTarget(u)}
+                        className="text-red-600 hover:text-red-800 transition-colors"
+                        title="Delete user (preserves history)"
+                        aria-label={`Delete ${getUserDisplayName(u)}`}
+                      ><Trash size={16} /></button>}
+                      <button
+                        onClick={() => setStatusTarget(u)}
+                        className={`${u.isActive ? 'text-red-500 hover:text-red-700' : 'text-emerald-600 hover:text-emerald-800'} transition-colors`}
+                        title={u.isActive ? 'Deactivate user' : 'Activate user'}
+                        aria-label={u.isActive ? `Deactivate ${getUserDisplayName(u)}` : `Activate ${getUserDisplayName(u)}`}
+                      >
+                        <Power size={16} />
                       </button>
-                      {u.isActive && (
-                        <button
-                          onClick={() => setDeactivateId(u.id)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                          title="Deactivate"
-                        >
-                          <Trash size={15} />
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -246,13 +257,34 @@ const UserList = () => {
       </Modal>
 
       <ConfirmDialog
-        open={Boolean(deactivateId)}
-        onClose={() => setDeactivateId(null)}
-        onConfirm={() => { deactivate(deactivateId!); setDeactivateId(null) }}
-        title="Deactivate User"
-        message="This user will lose access to the system immediately."
-        confirmLabel="Deactivate"
-        loading={deactivating}
+        open={Boolean(statusTarget)}
+        onClose={() => setStatusTarget(null)}
+        onConfirm={() => {
+          if (!statusTarget) return
+          setUserActiveStatus(
+            { userId: statusTarget.id, isActive: !statusTarget.isActive },
+            { onSuccess: () => setStatusTarget(null) }
+          )
+        }}
+        title={statusTarget?.isActive ? 'Deactivate User' : 'Activate User'}
+        message={statusTarget?.isActive
+          ? `${statusTarget ? getUserDisplayName(statusTarget) : 'This user'} will lose access to the system immediately.`
+          : `${statusTarget ? getUserDisplayName(statusTarget) : 'This user'} will be able to sign in to the system.`}
+        confirmLabel={statusTarget?.isActive ? 'Deactivate' : 'Activate'}
+        loading={changingStatus}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return
+          softDeleteUser(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })
+        }}
+        title="Delete User"
+        message={`${deleteTarget ? getUserDisplayName(deleteTarget) : 'This user'} will lose access and disappear from the users list. Their approvals and audit history will be retained, and this deletion will record your administrator account.`}
+        confirmLabel="Delete User"
+        loading={deletingUser}
       />
     </div>
   )
