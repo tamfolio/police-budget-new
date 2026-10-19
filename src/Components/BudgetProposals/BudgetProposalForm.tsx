@@ -100,7 +100,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
     <Modal
       open={open}
       onClose={onClose}
-      title="New Budget Proposal"
+      title="New AIE Proposal"
       size="lg"
       footer={
         <>
@@ -111,7 +111,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
           <button form="bp-form" type="submit"
             disabled={isPending || !departmentId || !selectedAieId || !justification.trim() || validItemCount === 0}
             className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            {isPending ? 'Creating…' : `Create Proposal${validItemCount > 0 ? ` (${validItemCount} item${validItemCount !== 1 ? 's' : ''})` : ''}`}
+            {isPending ? 'Creating…' : `Create AIE Proposal${validItemCount > 0 ? ` (${validItemCount} item${validItemCount !== 1 ? 's' : ''})` : ''}`}
           </button>
         </>
       }
@@ -182,7 +182,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
                       <div>
                         <p className="text-sm text-slate-700 font-medium">{li.subItemLabel || li.subItemCodeId}</p>
                         {li.fulfillingProposal && (
-                          <p className="text-xs text-amber-600 mt-0.5">Already has a proposal</p>
+                          <p className="text-xs text-amber-600 mt-0.5">Already has an AIE proposal</p>
                         )}
                       </div>
                       <p className="text-sm text-slate-500 text-right" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -214,7 +214,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
             required rows={3}
             value={justification}
             onChange={(e) => setJustification(e.target.value)}
-            placeholder="Provide the justification for this budget proposal…"
+            placeholder="Provide the justification for this AIE proposal…"
             className={`${inputCls} resize-none`}
           />
         </div>

@@ -29,7 +29,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { label: 'Fund Inflows',     to: '/dashboard/fund-inflows',     icon: ArrowDown },
       { label: 'AIE',              to: '/dashboard/aie',              icon: Wallet },
       { label: 'Distributions',    to: '/dashboard/distributions',    icon: MapTrifold },
-      { label: 'Budget Proposals', to: '/dashboard/budget-proposals', icon: ClipboardText },
+      { label: 'AIE Proposal',    to: '/dashboard/budget-proposals', icon: ClipboardText },
       { label: 'Budget Codes',     to: '/dashboard/budget-codes',     icon: Tag },
       { label: 'Capital Budget',   to: '/dashboard/capital-budget',   icon: Coins },
     ],
