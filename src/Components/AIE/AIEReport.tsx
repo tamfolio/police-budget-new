@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { FunnelSimple } from '@phosphor-icons/react'
 import { useAIECodeActuals, useAIEReport } from '../../hooks/useAIE'
 import { PageLoader } from '../Common/LoadingSpinner'
 import { EmptyState } from '../Common/EmptyState'
-import { Modal } from '../Common/Modal'
 
 const YEAR = new Date().getFullYear()
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
@@ -35,8 +35,34 @@ interface Props {
 
 const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
+  const [actualsPopoverPosition, setActualsPopoverPosition] = useState({ top: 16, left: 16 })
+  const closePopoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { data: rows = [], isLoading } = useAIEReport({ fiscalYear })
   const { data: actualData, isLoading: actualsLoading } = useAIECodeActuals(selectedCode, fiscalYear)
+
+  useEffect(() => () => {
+    if (closePopoverTimer.current) clearTimeout(closePopoverTimer.current)
+  }, [])
+
+  const showActualsPopover = (code: string, trigger: HTMLElement) => {
+    if (closePopoverTimer.current) clearTimeout(closePopoverTimer.current)
+    const rect = trigger.getBoundingClientRect()
+    const popoverWidth = Math.min(960, window.innerWidth - 32)
+    setActualsPopoverPosition({
+      top: Math.max(16, Math.min(rect.bottom + 8, window.innerHeight - 600)),
+      left: Math.max(16, Math.min(rect.right - popoverWidth, window.innerWidth - popoverWidth - 16)),
+    })
+    setSelectedCode(code)
+  }
+
+  const schedulePopoverClose = () => {
+    if (closePopoverTimer.current) clearTimeout(closePopoverTimer.current)
+    closePopoverTimer.current = setTimeout(() => setSelectedCode(null), 180)
+  }
+
+  const keepPopoverOpen = () => {
+    if (closePopoverTimer.current) clearTimeout(closePopoverTimer.current)
+  }
 
   const activeMonths = useMemo(() => {
     const keys = new Set<string>()
@@ -95,13 +121,18 @@ const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
                       {monthLabel(month)} Budget
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-right text-xs font-semibold border-l border-slate-600 whitespace-nowrap">Total AIE Actuals</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold border-l border-slate-600 whitespace-nowrap">Total Budget</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold border-l border-slate-600 whitespace-nowrap">Total Actuals</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold border-l border-slate-600 whitespace-nowrap">Variance</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, index) => {
                   const code = String(row.code ?? '')
                   const months = (row.months ?? {}) as Record<string, { budget?: number }>
+                  const totalBudget = Number(row.totalBudget ?? 0)
+                  const totalActual = Number(row.totalActual ?? 0)
+                  const variance = totalBudget - totalActual
                   return (
                     <tr key={code || index} className={`border-t border-slate-100 hover:bg-blue-50 ${index % 2 ? 'bg-slate-50/40' : 'bg-white'}`}>
                       <td className="px-4 py-2.5 font-mono text-xs text-slate-600 whitespace-nowrap">{code}</td>
@@ -112,15 +143,28 @@ const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
                           {fmt(months[month]?.budget ?? 0)}
                         </td>
                       ))}
+                      <td className="px-4 py-2.5 text-right text-xs border-l border-slate-100 whitespace-nowrap font-medium text-slate-700">
+                        {fmt(totalBudget)}
+                      </td>
                       <td className="px-4 py-2.5 text-right text-xs border-l border-slate-100 whitespace-nowrap">
                         <button
                           type="button"
-                          onClick={() => setSelectedCode(code)}
+                          onMouseEnter={(event) => showActualsPopover(code, event.currentTarget)}
+                          onMouseLeave={schedulePopoverClose}
+                          onFocus={(event) => showActualsPopover(code, event.currentTarget)}
+                          onClick={(event) => {
+                            if (window.matchMedia('(hover: hover)').matches) return
+                            if (selectedCode === code) setSelectedCode(null)
+                            else showActualsPopover(code, event.currentTarget)
+                          }}
                           aria-label={`Show AIE actual details for ${code}`}
-                          className="font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                          className="font-semibold text-blue-700 hover:text-blue-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
                         >
-                          {fmt(row.totalActual)}
+                          {fmt(totalActual)}
                         </button>
+                      </td>
+                      <td className={`px-4 py-2.5 text-right text-xs border-l border-slate-100 whitespace-nowrap font-semibold ${variance < 0 ? 'text-rose-700' : variance > 0 ? 'text-emerald-700' : 'text-slate-600'}`}>
+                        {variance > 0 ? '+' : ''}{fmt(variance)}
                       </td>
                     </tr>
                   )
@@ -135,7 +179,11 @@ const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
                       {fmt(totals.monthlyBudgets[month])}
                     </td>
                   ))}
+                  <td className="px-4 py-3 text-right text-xs text-slate-800 border-l border-slate-200 whitespace-nowrap">{fmt(totals.totalBudget)}</td>
                   <td className="px-4 py-3 text-right text-xs text-slate-800 border-l border-slate-200 whitespace-nowrap">{fmt(totals.totalActual)}</td>
+                  <td className={`px-4 py-3 text-right text-xs border-l border-slate-200 whitespace-nowrap font-semibold ${totals.totalBudget - totals.totalActual < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                    {totals.totalBudget - totals.totalActual > 0 ? '+' : ''}{fmt(totals.totalBudget - totals.totalActual)}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -143,11 +191,26 @@ const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
         )}
       </div>
 
-      <Modal open={Boolean(selectedCode)} onClose={() => setSelectedCode(null)} title={`AIE actual details · ${selectedCode ?? ''}`} size="xl">
-        {actualsLoading ? <PageLoader /> : (
-          <div className="space-y-6">
+      {selectedCode && createPortal(
+        <div
+          role="dialog"
+          aria-label={`AIE actual breakdown for ${selectedCode}`}
+          onMouseEnter={keepPopoverOpen}
+          onMouseLeave={schedulePopoverClose}
+          className="fixed z-[60] w-[min(960px,calc(100vw-32px))] max-h-[min(70vh,560px)] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xl"
+          style={actualsPopoverPosition}
+        >
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-3 backdrop-blur">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Total actuals breakdown · {selectedCode}</h2>
+              <p className="mt-0.5 text-xs text-slate-500">All actual entries for FY {fiscalYear}</p>
+            </div>
+            <button type="button" onClick={() => setSelectedCode(null)} className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800">Close</button>
+          </div>
+          {actualsLoading ? <div className="p-6"><PageLoader /></div> : (
+          <div className="space-y-5 p-5">
             <section>
-              <h3 className="text-sm font-semibold text-slate-800 mb-3">Workbook release details</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Workbook release details</h3>
               {actualDetails.length === 0 ? <p className="text-sm text-slate-500">No workbook release rows for this code.</p> : (
                 <div className="overflow-x-auto border border-slate-100 rounded-lg">
                   <table className="w-full text-xs">
@@ -171,7 +234,7 @@ const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
               )}
             </section>
             {proposalActuals.length > 0 && <section>
-              <h3 className="text-sm font-semibold text-slate-800 mb-3">Approved proposal actuals</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Approved proposal actuals</h3>
               <div className="space-y-2">{proposalActuals.map((proposal, index) => <div key={String(proposal.proposalId ?? index)} className="flex justify-between gap-4 border-b border-slate-100 pb-2 text-sm">
                 <span className="text-slate-600">{MONTH_LABELS[MONTHS[Number(proposal.month) - 1]] ?? 'Month'} · {String(proposal.proposalId)}</span>
                 <span className="font-medium text-slate-800">{fmt(proposal.amount)}</span>
@@ -179,7 +242,9 @@ const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
             </section>}
           </div>
         )}
-      </Modal>
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }
