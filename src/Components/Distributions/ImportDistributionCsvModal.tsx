@@ -6,6 +6,7 @@ import { distributionService, type DistributionView } from '../../api/services/d
 import { useImportDistributionCsv } from '../../hooks/useDistributions'
 import { useDistributions } from '../../hooks/useDistributions'
 import { getErrorMessage } from '../../utils/errorHandlers'
+import { screenUpload } from '../../utils/fileSafety'
 import DistributionPeriodPicker, { distributionSelectStyle } from './DistributionPeriodPicker'
 
 const HEADERS = ['unit_name', 'item_code', 'item_description', 'provision', 'amount']
@@ -136,11 +137,11 @@ const ImportDistributionCsvModal = ({ open, onClose, initialView }: Props) => {
   const chooseFile = async (next: File | null) => {
     setFile(next); setErrors([]); setPreviewRows([]); setStep('select')
     if (!next) return
-    if (!next.name.toLowerCase().endsWith('.csv')) { setErrors(['Only .csv files are accepted']); return }
-    if (next.size > MAX_FILE_SIZE) { setErrors(['CSV must not exceed 10 MB']); return }
     if (!periodValid) { setErrors(['Enter a valid period ID before selecting the CSV']); return }
     setValidating(true)
     try {
+      const unsafe = await screenUpload(next, ['csv'], MAX_FILE_SIZE)
+      if (unsafe) { setErrors([unsafe]); return }
       const text = await next.text()
       const templateText = templateCsv?.text ?? await ((await distributionService.getCsvTemplate(view, periodId)).data as Blob).text()
       const result = validateCsv(text, templateText)
@@ -205,7 +206,7 @@ const ImportDistributionCsvModal = ({ open, onClose, initialView }: Props) => {
         <div onClick={() => inputRef.current?.click()} className="border-2 border-dashed border-slate-200 rounded-lg p-7 text-center cursor-pointer hover:border-blue-400">
           <UploadSimple size={26} className="mx-auto text-slate-300 mb-2" /><p className="text-sm font-medium text-slate-700">{validating ? 'Validating against template…' : file?.name ?? 'Select completed CSV'}</p><p className="text-xs text-slate-400 mt-1">CSV only · maximum 10 MB</p>
         </div>
-        <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => void chooseFile(e.target.files?.[0] ?? null)} />
+        <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { void chooseFile(e.target.files?.[0] ?? null); e.target.value = '' }} />
         {file && errors.length === 0 && previewRows.length > 0 && <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-lg p-3"><CheckCircle size={18} weight="fill" />CSV read successfully. Click Review CSV to inspect {previewRows.length} rows before uploading.</div>}
         {errors.length > 0 && <div className="text-sm text-red-700 bg-red-50 rounded-lg p-3"><div className="font-semibold flex items-center gap-2 mb-2"><WarningCircle size={18} weight="fill" />Unable to preview this file</div>{errors.map((error, i) => <p key={i}>{error}</p>)}</div>}
       </div> : <div className="space-y-4">

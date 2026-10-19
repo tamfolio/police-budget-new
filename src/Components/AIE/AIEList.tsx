@@ -10,6 +10,7 @@ import { PageHeader } from '../Common/PageHeader'
 import { Modal } from '../Common/Modal'
 import AIEReport from './AIEReport'
 import AIEWorkbookImportQueue from './AIEWorkbookImportQueue'
+import { screenUpload } from '../../utils/fileSafety'
 
 const YEAR = new Date().getFullYear()
 
@@ -34,6 +35,8 @@ const AIEList = () => {
   const [importOpen, setImportOpen] = useState(false)
   const [importStep, setImportStep] = useState<1 | 2>(1)
   const [importFile, setImportFile] = useState<File | null>(null)
+  const [importFileError, setImportFileError] = useState<string | null>(null)
+  const [screeningFile, setScreeningFile] = useState(false)
   const [importYear, setImportYear] = useState(YEAR)
   const [importAction, setImportAction] = useState<'append' | 'correction' | 'replace'>('append')
   const [importResultId, setImportResultId] = useState<string | null>(null)
@@ -113,10 +116,22 @@ const AIEList = () => {
     importAIE(fd, { onSuccess: showResult })
   }
 
+  const selectImportFile = async (next: File | null) => {
+    setImportFile(null)
+    setImportFileError(null)
+    if (!next) return
+    setScreeningFile(true)
+    const error = await screenUpload(next, ['xlsx', 'csv'])
+    setScreeningFile(false)
+    if (error) setImportFileError(error)
+    else setImportFile(next)
+  }
+
   const closeImport = () => {
     setImportOpen(false)
     setImportStep(1)
     setImportFile(null)
+    setImportFileError(null)
     setImportResultId(null)
     setImportResultStatus(null)
   }
@@ -260,7 +275,9 @@ const AIEList = () => {
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
               >
-                {importFile ? (
+                {screeningFile ? (
+                  <p className="text-sm text-slate-500">Checking file…</p>
+                ) : importFile ? (
                   <p className="text-sm font-medium text-slate-700">{importFile.name}</p>
                 ) : (
                   <>
@@ -274,8 +291,9 @@ const AIEList = () => {
                 type="file"
                 accept=".xlsx,.csv"
                 className="hidden"
-                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => { void selectImportFile(e.target.files?.[0] ?? null); e.target.value = '' }}
               />
+              {importFileError && <p className="mt-2 text-sm text-red-600">{importFileError}</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

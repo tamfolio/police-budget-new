@@ -15,6 +15,7 @@ import { EmptyState } from '../Common/EmptyState'
 import { PageLoader } from '../Common/LoadingSpinner'
 import { Modal } from '../Common/Modal'
 import { ConfirmDialog } from '../Common/ConfirmDialog'
+import { screenUpload } from '../../utils/fileSafety'
 import type { CapitalBudgetItem, CapitalBudgetItemType, CapitalBudgetImportPreview } from '../../types'
 
 const YEAR = new Date().getFullYear()
@@ -130,6 +131,8 @@ const ImportFlow = ({ onClose }: { onClose: () => void }) => {
   const fileRef = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState<ImportStep>('upload')
   const [file, setFile] = useState<File | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
+  const [screeningFile, setScreeningFile] = useState(false)
   const [title, setTitle] = useState('')
   const [entity, setEntity] = useState('')
   const [fiscalYear, setFiscalYear] = useState(YEAR)
@@ -140,6 +143,17 @@ const ImportFlow = ({ onClose }: { onClose: () => void }) => {
 
   const inp = 'w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-600'
   const lbl = 'block text-sm font-medium text-slate-700 mb-1.5'
+
+  const selectFile = async (next: File | null) => {
+    setFile(null)
+    setFileError(null)
+    if (!next) return
+    setScreeningFile(true)
+    const error = await screenUpload(next, ['csv'])
+    setScreeningFile(false)
+    if (error) setFileError(error)
+    else setFile(next)
+  }
 
   const handlePreview = () => {
     if (!file) return
@@ -292,10 +306,12 @@ const ImportFlow = ({ onClose }: { onClose: () => void }) => {
           type="file"
           accept=".csv"
           style={{ display: 'none' }}
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => { void selectFile(e.target.files?.[0] ?? null); e.target.value = '' }}
         />
         <FileArrowUp size={32} className="mx-auto mb-2 text-slate-300" style={{ color: file ? '#16a34a' : undefined }} />
-        {file ? (
+        {screeningFile ? (
+          <p className="text-sm text-slate-500">Checking file…</p>
+        ) : file ? (
           <p className="text-sm font-semibold text-green-700">{file.name}</p>
         ) : (
           <>
@@ -304,6 +320,7 @@ const ImportFlow = ({ onClose }: { onClose: () => void }) => {
           </>
         )}
       </div>
+      {fileError && <p className="text-sm text-red-600">{fileError}</p>}
 
       {/* Sample CSV */}
       <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 14px' }}>
