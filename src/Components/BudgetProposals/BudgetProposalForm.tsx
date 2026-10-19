@@ -54,7 +54,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
   const lineItemQueries = useAIELineItemsMulti(monthAieIds)
   const lineItemsLoading = lineItemQueries.some((q) => q.isLoading)
 
-  const lineItems: TaggedLineItem[] = monthAieIds.flatMap((id, idx) => {
+  const lineItems: TaggedLineItem[] = monthAieIds.flatMap((_, idx) => {
     const aie = monthAies[idx]
     if (!aie) return []
     const response = lineItemQueries[idx]?.data as { data?: unknown } | undefined
@@ -124,7 +124,7 @@ const BudgetProposalForm = ({ open, onClose }: Props) => {
             Cancel
           </button>
           <button form="bp-form" type="submit"
-            disabled={isPending || !departmentId || !selectedLineItem || justification.trim().length < 10 || !validAmount}
+            disabled={isPending || !departmentId || justification.trim().length < 10 || !validAmount}
             className="px-4 py-2 text-sm font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {isPending ? 'Creating…' : 'Create AIE Proposal'}
           </button>
