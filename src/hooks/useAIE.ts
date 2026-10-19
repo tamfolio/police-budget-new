@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { aieService, type GetAIEsParams, type CreateAIEPayload } from '../api/services/aieService'
 import { getErrorMessage } from '../utils/errorHandlers'
@@ -28,6 +28,18 @@ export const useAIELineItems = (id: string) =>
     queryFn: () => aieService.getLineItems(id),
     select: (res) => res.data.data,
     enabled: Boolean(id),
+  })
+
+// Fetch detailed line items for several AIEs at once (for multi-AIE selection flows).
+// No `select` here — overload resolution for a mapped queries array loses the
+// narrowed return type, so callers read `.data.data` off the raw response themselves.
+export const useAIELineItemsMulti = (ids: string[]) =>
+  useQueries({
+    queries: ids.map((id) => ({
+      queryKey: [QK, id, 'line-items'],
+      queryFn: () => aieService.getLineItems(id),
+      enabled: Boolean(id),
+    })),
   })
 
 export const useAIEReviewQueue = () =>

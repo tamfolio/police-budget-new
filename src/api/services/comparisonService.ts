@@ -13,8 +13,8 @@ export interface MonthOverMonthParams {
 }
 
 export interface BudgetVsActualParams {
-  fiscalYear?: number
-  periodId?: string
+  fiscalYear: number
+  periodId: string
 }
 
 export const comparisonService = {
@@ -22,6 +22,6 @@ export const comparisonService = {
   getZones: (params: ZoneComparisonParams) => apiClient.get(COMPARISONS.ZONES, { params }),
   // GET /comparisons/month-over-month?fiscalYear&month
   getMonthOverMonth: (params: MonthOverMonthParams) => apiClient.get(COMPARISONS.MONTH_OVER_MONTH, { params }),
-  // GET /comparisons/budget-vs-actual?fiscalYear&periodId
-  getBudgetVsActual: (params?: BudgetVsActualParams) => apiClient.get(COMPARISONS.BUDGET_VS_ACTUAL, { params }),
+  // GET /comparisons/budget-vs-actual?fiscalYear&periodId — both required by the backend
+  getBudgetVsActual: (params: BudgetVsActualParams) => apiClient.get(COMPARISONS.BUDGET_VS_ACTUAL, { params }),
 }

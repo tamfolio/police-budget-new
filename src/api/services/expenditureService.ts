@@ -1,12 +1,10 @@
 import apiClient from '../client'
 import { EXPENDITURES } from '../endpoints'
 
-export type ExpenditureView = 'sub-item' | 'distribution' | 'aie'
-export type ExpenditureDistributionView = 'zone' | 'formations' | 'schools' | 'summary'
+export type ExpenditureView = 'sub-item'
 
 export interface GetExpendituresParams {
   view: ExpenditureView
-  distributionView?: ExpenditureDistributionView
   status?: string
   fiscalYear?: number
 }
