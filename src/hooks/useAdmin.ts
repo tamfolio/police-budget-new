@@ -33,6 +33,31 @@ export const useDeactivateUser = () => {
   })
 }
 
+export const useSetUserActiveStatus = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
+      adminService.setUserActiveStatus(userId, isActive),
+    onSuccess: (_data, variables) => {
+      toast.success(variables.isActive ? 'User activated' : 'User deactivated')
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  })
+}
+
+export const useSoftDeleteUser = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => adminService.softDeleteUser(userId),
+    onSuccess: () => {
+      toast.success('User deleted; historical records were retained')
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
+    onError: (e: unknown) => toast.error(getErrorMessage(e)),
+  })
+}
+
 export const useRoles = (params?: GetUsersParams) =>
   useQuery({
     queryKey: ['roles', params],
