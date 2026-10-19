@@ -28,6 +28,22 @@ const monthOrder = (key: string) => {
   return (Number(year) || 0) * 12 + MONTHS.indexOf(month)
 }
 
+const compareBudgetCodes = (left: string, right: string) => {
+  const leftMatch = left.match(/^(\d+)(.*)$/)
+  const rightMatch = right.match(/^(\d+)(.*)$/)
+  if (!leftMatch || !rightMatch) return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' })
+
+  const [, leftBase, leftSuffix] = leftMatch
+  const [, rightBase, rightSuffix] = rightMatch
+  const baseOrder = leftBase.length - rightBase.length || leftBase.localeCompare(rightBase)
+  if (baseOrder !== 0) return baseOrder
+
+  // A base budget code comes first, followed by its sub-codes such as (a), (b), etc.
+  if (!leftSuffix) return rightSuffix ? -1 : 0
+  if (!rightSuffix) return 1
+  return leftSuffix.localeCompare(rightSuffix, undefined, { numeric: true, sensitivity: 'base' })
+}
+
 interface Props {
   fiscalYear: number
   onYearChange: (year: number) => void
@@ -39,6 +55,10 @@ const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
   const closePopoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { data: rows = [], isLoading } = useAIEReport({ fiscalYear })
   const { data: actualData, isLoading: actualsLoading } = useAIECodeActuals(selectedCode, fiscalYear)
+  const sortedRows = useMemo(
+    () => [...rows].sort((left, right) => compareBudgetCodes(String(left.code ?? ''), String(right.code ?? ''))),
+    [rows],
+  )
 
   useEffect(() => () => {
     if (closePopoverTimer.current) clearTimeout(closePopoverTimer.current)
@@ -127,7 +147,7 @@ const AIEReport = ({ fiscalYear, onYearChange }: Props) => {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, index) => {
+                {sortedRows.map((row, index) => {
                   const code = String(row.code ?? '')
                   const months = (row.months ?? {}) as Record<string, { budget?: number }>
                   const totalBudget = Number(row.totalBudget ?? 0)

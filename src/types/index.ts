@@ -221,9 +221,7 @@ export interface AIEImport {
 
 export interface CreateAIEPayload {
   fiscalYear: number
-  aieNo: string
   issueDate: string
-  expiresOn?: string
   recipientUnit: string
   lineItems: { itemCode: string; subItemCode: string; amount: number }[]
   notes?: string

@@ -25,9 +25,7 @@ const AIEList = () => {
   // Create modal
   const [createOpen, setCreateOpen] = useState(false)
   const [createYear, setCreateYear] = useState(YEAR)
-  const [aieNo, setAieNo] = useState('')
   const [issueDate, setIssueDate] = useState('')
-  const [expiresOn, setExpiresOn] = useState('')
   const [recipientUnit, setRecipientUnit] = useState('')
   const [lineRows, setLineRows] = useState<LineRow[]>([blankRow()])
   const [createNotes, setCreateNotes] = useState('')
@@ -58,7 +56,7 @@ const AIEList = () => {
   const canReviewWorkbook = canReplaceWorkbook
 
   const resetForm = () => {
-    setAieNo(''); setIssueDate(''); setExpiresOn('')
+    setIssueDate('')
     setRecipientUnit(''); setLineRows([blankRow()]); setCreateNotes('')
     setCreateYear(YEAR)
   }
@@ -71,7 +69,7 @@ const AIEList = () => {
     setLineRows((rows) => rows.length > 1 ? rows.filter((_, idx) => idx !== i) : rows)
 
   const formValid =
-    aieNo.trim() && issueDate && recipientUnit.trim() &&
+    issueDate && recipientUnit.trim() &&
     lineRows.some((r) => r.itemCode.trim() && r.subItemCode.trim() && Number(r.amount) > 0)
 
   const handleCreate = () => {
@@ -80,8 +78,7 @@ const AIEList = () => {
     )
     createAIE(
       {
-        fiscalYear: createYear, aieNo: aieNo.trim(), issueDate,
-        ...(expiresOn ? { expiresOn } : {}),
+        fiscalYear: createYear, issueDate,
         recipientUnit: recipientUnit.trim(),
         lineItems: validItems.map((r) => ({
           itemCode: r.itemCode.trim(), subItemCode: r.subItemCode.trim(), amount: Number(r.amount),
@@ -181,10 +178,6 @@ const AIEList = () => {
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={lbl}>AIE Number <span className="text-red-500">*</span></label>
-              <input value={aieNo} onChange={(e) => setAieNo(e.target.value)} placeholder="e.g. AIE/2026/001" className={inp} />
-            </div>
-            <div>
               <label className={lbl}>Fiscal Year</label>
               <select value={createYear} onChange={(e) => setCreateYear(Number(e.target.value))} className={inp}>
                 {[YEAR, YEAR - 1, YEAR - 2].map((y) => <option key={y} value={y}>{y}</option>)}
@@ -192,13 +185,9 @@ const AIEList = () => {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="col-span-2">
               <label className={lbl}>Issue Date <span className="text-red-500">*</span></label>
               <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className={inp} />
-            </div>
-            <div>
-              <label className={lbl}>Expires On <span className="text-slate-400 font-normal">(defaults +90 days)</span></label>
-              <input type="date" value={expiresOn} onChange={(e) => setExpiresOn(e.target.value)} className={inp} />
             </div>
           </div>
           <div>
