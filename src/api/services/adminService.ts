@@ -36,6 +36,8 @@ export const adminService = {
   getUser: (id: string) => apiClient.get(ADMIN.GET_USER(id)),
   updateUser: (id: string, payload: Record<string, unknown>) => apiClient.patch(ADMIN.UPDATE_USER(id), payload),
   deactivateUser: (id: string) => apiClient.post(ADMIN.DEACTIVATE_USER(id)),
+  setUserActiveStatus: (id: string, isActive: boolean) => apiClient.patch(ADMIN.SET_USER_STATUS(id), { isActive }),
+  softDeleteUser: (id: string) => apiClient.delete(ADMIN.SOFT_DELETE_USER(id)),
 
   // Roles
   getRoles: (params?: GetRolesParams) => apiClient.get(ROLES.LIST, { params }),
