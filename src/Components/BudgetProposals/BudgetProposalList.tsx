@@ -33,8 +33,8 @@ const BudgetProposalList = () => {
   return (
     <div>
       <PageHeader
-        title="Budget Proposals"
-        subtitle="Manage budget proposals for AIE line items"
+        title="AIE Proposal"
+        subtitle="Manage proposals for AIE line items"
         actions={
           <button onClick={() => setFormOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-semibold rounded-lg hover:bg-blue-800 transition-colors">
             <Plus size={16} weight="bold" /> New AIE Proposal
@@ -45,7 +45,7 @@ const BudgetProposalList = () => {
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-5 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">
           <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search proposals…"
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search AIE proposals…"
             className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
         </div>
         <div className="flex items-center gap-2">
@@ -70,7 +70,7 @@ const BudgetProposalList = () => {
         {isLoading ? (
           <PageLoader />
         ) : filtered.length === 0 ? (
-          <EmptyState title="No budget proposals found" description="Create a proposal from approved AIE line items." />
+          <EmptyState title="No AIE proposals found" description="Create a proposal from approved AIE line items." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -116,11 +116,11 @@ const BudgetProposalList = () => {
 
       <ConfirmDialog open={Boolean(submitId)} onClose={() => setSubmitId(null)}
         onConfirm={() => { submitProposal(submitId!); setSubmitId(null) }}
-        title="Submit Proposal" message="Submit this budget proposal for review?" confirmLabel="Submit" variant="primary" loading={submitting} />
+        title="Submit AIE Proposal" message="Submit this AIE proposal for review?" confirmLabel="Submit" variant="primary" loading={submitting} />
 
       <ConfirmDialog open={Boolean(approveId)} onClose={() => setApproveId(null)}
         onConfirm={() => { approveProposal(approveId!); setApproveId(null) }}
-        title="Approve Proposal" message="Approve this budget proposal?" confirmLabel="Approve" variant="primary" loading={approving} />
+        title="Approve AIE Proposal" message="Approve this AIE proposal?" confirmLabel="Approve" variant="primary" loading={approving} />
     </div>
   )
 }
