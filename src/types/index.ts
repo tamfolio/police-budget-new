@@ -322,6 +322,8 @@ export interface BudgetProposal {
   fiscalYear: number
   status: BudgetProposalStatus
   items: BudgetProposalItem[]
+  lineItemId?: string | null
+  targetLineItem?: { id: string; subItemCodeId?: string; budgetAmount?: number } | null
   notes?: string
   createdAt: string
   updatedAt: string
