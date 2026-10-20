@@ -87,7 +87,12 @@ const Reports = () => {
     return String(value)
   }
 
-  const cardTotals = monthlySummaryRows.reduce((totals, row) => ({
+  const cardTotals = monthlySummaryRows.reduce<{
+    totalAie: number
+    totalDistributed: number
+    totalFundInflow: number
+    aieItemCount: number
+  }>((totals, row) => ({
     totalAie: totals.totalAie + Number(row.aie ?? 0),
     totalDistributed: totals.totalDistributed + Number(row.distributed ?? 0),
     totalFundInflow: totals.totalFundInflow + Number(row.inflow ?? 0),
