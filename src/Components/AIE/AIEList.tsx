@@ -6,6 +6,8 @@ import {
   useCreateAIE, useImportAIE, useReplaceAIE,
 } from '../../hooks/useAIE'
 import { useCurrentUser } from '../../hooks/useAuth'
+import { useBudgetReference } from '../../hooks/useBudgetCodes'
+import type { BudgetCategory, BudgetReference } from '../../types'
 import { PageHeader } from '../Common/PageHeader'
 import { Modal } from '../Common/Modal'
 import AIEReport from './AIEReport'
@@ -45,6 +47,7 @@ const AIEList = () => {
 
   // Data hooks
   const { data: currentUser } = useCurrentUser()
+  const { data: budgetReference, isLoading: loadingBudgetCodes, isError: budgetCodesError } = useBudgetReference()
   const { mutate: createAIE, isPending: creating } = useCreateAIE()
   const { mutate: importAIE, isPending: importing } = useImportAIE()
   const { mutate: replaceAIE, isPending: replacing } = useReplaceAIE()
@@ -57,6 +60,7 @@ const AIEList = () => {
   const canUploadWorkbook = ['SYSADMIN', 'BUDGET_DIR', 'BUDGET_OFF'].includes(roleCode ?? '')
   const canReplaceWorkbook = ['SYSADMIN', 'BUDGET_DIR'].includes(roleCode ?? '')
   const canReviewWorkbook = canReplaceWorkbook
+  const budgetCategories = ((budgetReference as BudgetReference | undefined)?.categories ?? []) as BudgetCategory[]
 
   const resetForm = () => {
     setIssueDate('')
@@ -227,8 +231,33 @@ const AIEList = () => {
               <div className="divide-y divide-slate-100">
                 {lineRows.map((row, i) => (
                   <div key={i} className="grid grid-cols-[1fr_1fr_120px_32px] gap-2 items-center px-3 py-2">
-                    <input value={row.itemCode} onChange={(e) => updateRow(i, 'itemCode', e.target.value)} placeholder="e.g. 2301" className="px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                    <input value={row.subItemCode} onChange={(e) => updateRow(i, 'subItemCode', e.target.value)} placeholder="e.g. 23010112" className="px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    <select
+                      value={row.itemCode}
+                      disabled={loadingBudgetCodes || budgetCategories.length === 0}
+                      onChange={(e) => setLineRows((rows) => rows.map((r, idx) => idx === i ? { ...r, itemCode: e.target.value, subItemCode: '' } : r))}
+                      className="min-w-0 px-2 py-1.5 text-sm border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50"
+                    >
+                      <option value="">{loadingBudgetCodes ? 'Loading codes…' : 'Select item code…'}</option>
+                      {budgetCategories.map((category) => (
+                        <option key={category.id} value={category.code}>{category.code} — {category.name}</option>
+                      ))}
+                    </select>
+                    {budgetCategories.find((category) => category.code === row.itemCode)?.subItems?.length ? (
+                      <select
+                        value={row.subItemCode}
+                        onChange={(e) => updateRow(i, 'subItemCode', e.target.value)}
+                        className="min-w-0 px-2 py-1.5 text-sm border border-slate-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">Select sub-item code…</option>
+                        {budgetCategories.find((category) => category.code === row.itemCode)?.subItems.map((subItem) => (
+                          <option key={subItem.id} value={subItem.code}>{subItem.code} — {subItem.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="px-2 py-1.5 text-xs text-slate-400">
+                        {row.itemCode ? 'No sub-items available' : 'Select an item code first'}
+                      </span>
+                    )}
                     <input type="number" min={0} value={row.amount} onChange={(e) => updateRow(i, 'amount', e.target.value)} placeholder="0.00" className="px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
                     <button onClick={() => removeRow(i)} disabled={lineRows.length === 1} className="p-1 text-slate-300 hover:text-red-500 disabled:opacity-0 transition-colors">
                       <Trash size={14} />
@@ -237,6 +266,7 @@ const AIEList = () => {
                 ))}
               </div>
             </div>
+            {budgetCodesError && <p className="mt-2 text-xs text-red-600">Could not load budget codes. Refresh and try again.</p>}
           </div>
           <div>
             <label className={lbl}>Notes</label>
