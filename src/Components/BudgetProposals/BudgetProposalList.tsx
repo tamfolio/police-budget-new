@@ -86,7 +86,7 @@ const BudgetProposalList = () => {
                   <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{p.id.slice(0, 8)}…</td>
                     <td className="px-4 py-3 text-slate-700 font-medium">{p.fiscalYear}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.items?.length ?? 0} items</td>
+                    <td className="px-4 py-3 text-slate-600">{p.items?.length ?? (p.targetLineItem || p.lineItemId ? 1 : 0)} items</td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{new Date(p.createdAt).toLocaleDateString('en-GB')}</td>
                     <td className="px-4 py-3">
