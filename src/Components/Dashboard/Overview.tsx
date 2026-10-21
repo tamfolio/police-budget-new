@@ -119,7 +119,7 @@ const Overview = () => {
   const pctVal = (v: number | undefined) => (v != null ? `${v.toFixed(1)}%` : '—')
 
   const subStats = [
-    { label: 'AIE Budget',        value: numVal(cards?.aieTotal) },
+    { label: 'AIE Expenditure',  value: numVal(cards?.aieActualTotal) },
     { label: 'Total Expenditure', value: numVal(cards?.totalExpenditure) },
     { label: 'Utilization',       value: pctVal(cards?.utilization) },
   ]
