@@ -1,0 +1,21 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "aie-monthly-upload-flow",
+    "feat/updates",
+    "main",
+    "origin"
+  ],
+  "parent": {
+    "aie-monthly-upload-flow": "main",
+    "feat/updates": "main",
+    "main": null,
+    "origin": "main"
+  },
+  "order": [
+    "main",
+    "aie-monthly-upload-flow",
+    "feat/updates",
+    "origin"
+  ]
+}
